@@ -497,7 +497,7 @@ See `docs/verifactu.md`. It records, prints the AEAT QR and sends to AEAT, but i
 
 ## 21. New on main: bank reconciliation, quarter close and filing calendar
 
-These are on the `main` branch after 0.23.2 and are not in a tagged release yet. The pictures are from the development build on 25 November 2026, with fictional records, a real local server and PostgreSQL, and no mocked responses.
+These are new in 0.24.0. The pictures are from the development build on 25 November 2026, with fictional records, a real local server and PostgreSQL, and no mocked responses.
 
 ### Reconcile a bank statement
 1. Open **Accounting** and find the **Bank reconciliation** panel.

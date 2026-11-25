@@ -13,7 +13,7 @@
 
 # Changelog
 
-## Unreleased
+## 0.24.0
 
 - **Toolchain and dependencies brought up to date.** Go stays on 1.27.4 (the current release). Build images and CI move to Node.js 26 LTS (the server image's web stage was on 22, the package, installer and mobile builds on 22 and 24). The runtime image stays on Alpine 3.22: it carries Debian-built `pg_dump` with a custom loader setup that could not be test-built here. The web app moves to TypeScript 7.0.2, Vite 8.3.8 and `@vitejs/plugin-react` 6.3.0, and passes type-check, build, unit tests, locale check and `npm audit`. Server libraries: pgx 5.13.0, chi 5.5.0, golang-migrate 4.20.1, MCP Go SDK 1.8.0, shopspring/decimal 1.6.0, excelize 2.11.1, barcode 1.1.1, and `golang.org/x/{crypto,image,text}` 0.59.0, 0.48.0 and 0.44.0. The phone app moves to Expo SDK 58.0.26 patch releases and stays on the TypeScript 6 and ESLint 9 that Expo SDK 58 pins. Verified with `go vet`, the unit tests, the full integration suite against a real PostgreSQL 18, and a clean govulncheck of the server, worker and MCP binaries. No migration and no behaviour change.
 - **Security: dependency updates.** OpenTelemetry (`otel`, `sdk`, `trace`, `metric`, stdout exporter) 1.46.0 to 1.47.0, which fixes GO-2026-6974 reported by govulncheck against the server binary. After the bump govulncheck finds nothing in the server, worker or MCP binaries, `go vet` is clean and `npm audit` reports 0 vulnerabilities for the web, mobile and desktop apps. The product website moved to Next.js 16.4.6, which fixes seven advisories in 16.0.0 to 16.4.4 (cache leaks and disclosure in `use cache`, an SVG bypass in image optimisation, and cookie and response disclosure issues); its audit is also clean. No migration and no behaviour change.

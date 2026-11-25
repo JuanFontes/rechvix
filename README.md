@@ -45,7 +45,7 @@ These screenshots were captured from the **0.14.24 application on 21 October 202
 | ![Rechvix invoice builder with selected customer, industrial product, quantity, price and finalize controls](docs/assets/tutorial/24-invoice-builder-filled.png) **Single-workspace invoicing** | ![Rechvix inventory stock card showing warehouse balance, stock adjustments and purchase and sale movement history](docs/assets/tutorial/31-stock-movements.png) **Warehouse inventory and stock history** |
 | ![Rechvix new-customer form opened inline while building an invoice](docs/assets/tutorial/23-inline-customer.png) **Create a customer without leaving the invoice** | ![Rechvix dashboard with sales, purchases, receivables, payables and stock valuation](docs/assets/tutorial/05-dashboard.png) **Business dashboard** |
 
-### New on `main` since 0.23.2 (not yet in a tagged release)
+### New in 0.24.0 (since 0.23.2)
 
 Captured on 25 November 2026 from the development build, with fictional records, a real local server and PostgreSQL, and no mocked responses.
 
@@ -128,7 +128,7 @@ Use the platform's custom Compose installation workflow with:
 https://raw.githubusercontent.com/Raktim94/rechvix/main/casaos/docker-compose.yml
 ```
 
-The current manifest pins **0.23.2** for the server, migration and worker services, with images published for **amd64 and arm64**. It generates database/encryption secrets on first boot. Open `http://<your-server>:8090`, then complete setup.
+The current manifest pins **0.24.0** for the server, migration and worker services, with images published for **amd64 and arm64**. It generates database/encryption secrets on first boot. Open `http://<your-server>:8090`, then complete setup.
 
 Back up both `/DATA/AppData/rechvix/postgres` and `/DATA/AppData/rechvix/secrets`. Keep the secrets when upgrading; removing the application data can destroy records or make encrypted data unrecoverable. Consult the [CasaOS manifest](casaos/docker-compose.yml) and [deployment guide](docs/operations/deployment.md) for the current configuration.
 
