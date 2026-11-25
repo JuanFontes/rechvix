@@ -3,6 +3,15 @@
 One Expo / React Native codebase (TypeScript) for both phones. **Standalone first**: the app works fully on its own with no server at all
 (items, customers, stock, GST invoices, PDF sharing, backup). Connect a Rechvix server any time and everything uploads and merges.
 
+## Screens
+
+Captured on 25 November 2026 from the Android build in an emulator, with fictional records (not yet checked on a physical device). Step by step: [tutorial, chapter 22](../../tutorial.md#22-the-phone-app-billing-collecting-and-reports).
+
+| | | |
+|---|---|---|
+| ![First screen](../../docs/assets/screenshots/phone-first-screen.webp) | ![New sale](../../docs/assets/screenshots/phone-new-sale.webp) | ![Whole-bill discount](../../docs/assets/screenshots/phone-bill-discount.webp) |
+| ![Receivables by age](../../docs/assets/screenshots/phone-receivables-by-age.webp) | ![Payment reminder](../../docs/assets/screenshots/phone-payment-reminder.webp) | ![Day book](../../docs/assets/screenshots/phone-day-book.webp) |
+
 ## Standalone mode (no server)
 
 First launch: welcome -> business details -> billing. No account, no server, no internet needed.

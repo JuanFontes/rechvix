@@ -26,6 +26,8 @@ Desktop captures include the complete contents of long pages. Click an image to 
 18. [Daily checklist and troubleshooting](#18-daily-checklist-and-troubleshooting)
 19. [Page and screenshot coverage](#19-page-and-screenshot-coverage)
 20. [New in 0.15: selling, serving and collecting](#20-new-in-015-selling-serving-and-collecting)
+21. [New on main: bank reconciliation, quarter close and filing calendar](#21-new-on-main-bank-reconciliation-quarter-close-and-filing-calendar)
+22. [The phone app: billing, collecting and reports](#22-the-phone-app-billing-collecting-and-reports)
 
 ## 1. First setup and signing in
 
@@ -492,3 +494,75 @@ On a finalized document choose **Ask for a signature**. The customer opens the l
 
 ### Spain: VERI*FACTU
 See `docs/verifactu.md`. It records, prints the AEAT QR and sends to AEAT, but is not certified: it has not been run against AEAT's real test portal and the producer's *declaracion responsable* has not been made.
+
+## 21. New on main: bank reconciliation, quarter close and filing calendar
+
+These are on the `main` branch after 0.23.2 and are not in a tagged release yet. The pictures are from the development build on 25 November 2026, with fictional records, a real local server and PostgreSQL, and no mocked responses.
+
+### Reconcile a bank statement
+1. Open **Accounting** and find the **Bank reconciliation** panel.
+2. Load your bank statement as a CSV. Loading the same statement twice is safe.
+3. Each statement line appears on one side. Next to every open line you see receipts or supplier payments you already booked. A suggestion needs the same bank account, exactly the same amount and a date within a week. A reversed receipt is never offered, and one receipt backs only one line.
+4. Choose a suggestion to match the line. **Matching changes no accounts.**
+5. A bank charge with nothing behind it is never posted for you: ignore it and give a reason, or record the expense first and then match it.
+
+![Accounting page, Bank reconciliation: a statement with nine lines, three already matched, and exact-amount suggestions beside the open lines](docs/assets/tutorial/49-bank-reconciliation.png)
+
+### Close a quarter in one step
+Under **Accounting, Fiscal periods**, **Last quarter** and **This quarter** each have one button. It reuses the quarter's fiscal period if it exists, creates it if not, and locks it after a clear confirmation. Nothing can then be posted or backdated into it, except by someone who holds the override permission.
+
+![Accounting page: Close a quarter shows Jul-Sep 2026 locked, a button for the current quarter and the fiscal periods table](docs/assets/tutorial/50-quarter-close.png)
+
+### Filing calendar (India and Spain)
+The tax page for Spain (Modelos 303, 130, 111, 115, 349, 390, 190, 180, 347) and India (GSTR-1 and GSTR-3B, monthly filers) lists the returns open or due in the next four months. Past-due returns are not listed, and other countries show no calendar. It is a reminder only: Rechvix does not file returns and cannot tell whether one was filed, so confirm dates with your tax authority or accountant.
+
+![GST page, Filing calendar: GSTR-1 and GSTR-3B for the next four months with due dates and days left](docs/assets/tutorial/51-filing-calendar.png)
+
+## 22. The phone app: billing, collecting and reports
+
+The Android and iOS app (Expo) works with no server at all, or linked to your Rechvix server. These pictures were captured on 25 November 2026 from the Android build running in an emulator, with fictional records. They have not yet been checked on a physical device.
+
+### 1. Choose how you will use it
+After the welcome screen the app asks: **On this phone only** (works offline, no account) or **With my Rechvix server** (syncs, and still works offline). You can change this later in **More**. Signing in to a server builds the business from the server's company.
+
+![First screen: on this phone only, or with my Rechvix server](docs/assets/tutorial/52-phone-first-screen.png)
+
+### 2. Make a sale
+Tap **New sale**, choose the customer, then tap items to add them: the most-sold items come first, then the rest of your catalogue, and search finds the others. Each line has a quantity you can type, a price and an optional line discount. The bar at the bottom always shows the total, whether GST is included, and the tax split.
+
+![New sale with a customer, quick-add items, the bill and the total bar](docs/assets/tutorial/53-phone-new-sale.png)
+
+To discount the whole bill, tap **+ Discount on the whole bill**, choose an amount or a percentage and type it once. The discount is shared over the items in proportion to their price, to the paisa, so GST stays correct and no item goes below zero.
+
+![A 5 percent discount on the whole bill, total recalculated](docs/assets/tutorial/54-phone-bill-discount.png)
+
+Then choose how it was paid (Cash, UPI, Card or **Pay later**). If something stays due, pick **Due in** 7, 15 or 30 days so the app can tell later when it is overdue. Save. The invoice number, total and amount still to collect are shown, with buttons to share the PDF or view the invoice.
+
+### 3. Collect what you are owed
+Open **To collect**. The bar shows what customers owe by age: not yet due, 1-30, 31-60, 61-90 and over 90 days, counted from each invoice's due date (an invoice with no due date is never called overdue). Tap a customer to see their open invoices, record a payment, send a reminder, or share an **account statement PDF**.
+
+![To collect: customers owe, with the age bar and customers sorted by amount](docs/assets/tutorial/55-phone-receivables-by-age.png)
+
+**Send payment reminder** opens a message you can read and edit before anything is sent. Switch on **Also send a statement PDF** if you want it, then open WhatsApp with the message, share the PDF, or share the text. Opening a reminder sends nothing, and Rechvix cannot tell whether a message was delivered or read: the history says "share opened" or "marked sent by you", never "delivered".
+
+![Payment reminder with an editable message, a statement PDF option and WhatsApp button](docs/assets/tutorial/56-phone-payment-reminder.png)
+
+The statement lists every invoice and payment with a running balance, and an age table.
+
+![Account statement PDF](docs/assets/tutorial/60-phone-statement-pdf.png)
+
+### 4. Look back: Day book and Reports
+**More, Day book** lists invoices, money in and credit notes in time order for today, this week, this month or this quarter, with billed, money-in and credit-note totals. Filter by type, search by customer or invoice number, or share it as a PDF.
+
+![Day book for the quarter](docs/assets/tutorial/57-phone-day-book.png)
+
+**More, Reports** work from the records on the phone, so they work offline: Sales, By customer, By item, Money in (by how it was paid) and Stock.
+
+![Reports list](docs/assets/tutorial/58-phone-reports.png)
+
+### 5. Set your business details and invoice terms
+**More, Business details** holds your name, phone, address, GSTIN and the **Terms and conditions on invoices**. The terms print at the foot of invoices and quotations in all three designs (Classic tax invoice, Clean modern and Compact receipt).
+
+![Business details with terms and conditions](docs/assets/tutorial/59-phone-business-terms.png)
+
+![Tax invoice PDF with GSTIN, GST split, part payment, balance due and terms](docs/assets/tutorial/61-phone-invoice-pdf.png)
