@@ -27,6 +27,7 @@ import (
 	accountingpg "rechvix/internal/modules/accounting/pg"
 	backupapp "rechvix/internal/modules/backup/app"
 	backuphttp "rechvix/internal/modules/backup/httpapi"
+	"rechvix/internal/modules/bankrec"
 	catalogueapp "rechvix/internal/modules/catalogue/app"
 	cataloguehttp "rechvix/internal/modules/catalogue/httpapi"
 	cataloguepg "rechvix/internal/modules/catalogue/pg"
@@ -653,6 +654,7 @@ func run() error {
 			legacyimport.NewHandlers(legacyimport.NewService(pool, accountingSvc, permissionsChecker, auditRecorder)).Mount(r)
 			sepa.NewHandlers(sepa.NewService(pool, accountingSvc, aead, permissionsChecker, auditRecorder)).Mount(r)
 			reminders.NewHandlers(remindersSvc).Mount(r)
+			bankrec.NewHandlers(bankrec.NewService(pool, permissionsChecker, auditRecorder)).Mount(r)
 			datasync.NewHandlers(datasyncSvc).Mount(r)
 			recurring.NewHandlers(recurringSvc).Mount(r)
 			pricerules.NewHandlers(priceRulesSvc).Mount(r)

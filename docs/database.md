@@ -81,6 +81,7 @@ are the source of truth; re-derive this file from them.
 | `journals`, `journal_lines` | Double-entry, enforced at three layers: app-level `validateBalanced`, a Postgres DEFERRED CONSTRAINT TRIGGER re-checking Σdebit=Σcredit at commit, and a BEFORE UPDATE/DELETE trigger making posted lines immutable — a trigger specifically because a table owner bypasses `GRANT`/`REVOKE` the same way it bypasses RLS. |
 | `fiscal_periods` | Period locking; `accounting.override_locked_period` is a distinct permission from `accounting.post`. |
 | `receipts`, `payments`, `bank_accounts`, `reconciliations` | Cash/bank side of the ledger. |
+| `bank_statement_lines` (`0066`) | Imported bank-statement lines (signed amount: + in, − out), each `UNMATCHED`, `MATCHED` to one receipt or supplier payment, or `IGNORED` with a reason. RLS by organisation. `(org, bank account, line_hash, occurrence)` is unique so re-importing a statement adds nothing; `(org, matched_kind, matched_id)` is unique while matched so one receipt/payment backs one line. CHECK constraints keep status, match pair and resolution timestamp consistent. Matching posts no journal. |
 
 ## Reporting (`0022`)
 

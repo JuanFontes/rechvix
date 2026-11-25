@@ -132,6 +132,7 @@ for what was actually sent and when.
 | GST / tax | `/gst/*` |
 | Sales | `/sales/*` |
 | Accounting | `/accounting/*` |
+| Bank reconciliation | `GET/POST /accounting/bank-accounts/{id}/statement-lines` (list with match candidates / import lines), `POST /accounting/bank-statement-lines/{id}/match`, `/unmatch`, `/ignore`, `/unignore`. Import is JSON (`{lines:[{date,description,reference,amount}]}`, at most 5000, amount signed, 6 decimals); mutations need `accounting.reconcile`, reads `accounting.view`. Errors: 400 invalid, 404 unknown, 409 rule broken (amount differs, other bank account, reversed receipt, already matched). |
 | Reporting | `/reports/*` |
 | e-Way Bill | `/ewaybill/*`, plus `/sales/documents/{id}/ewaybill*` |
 | Logistics | `/logistics/*` |

@@ -37,7 +37,7 @@ OBSERVED = visible on a sheet; INFERRED = reasonable reading of a control; UNKNO
 | 10 | Investment-goods register | none | **Deferred**: needs a depreciation design |
 | 13, 14 | Suppliers/customers lists | Contacts | Kept |
 | 16, 17, 63 | Catalogue, stock regularisation, stock control settings | Catalogue, stock adjustments | Kept |
-| 20-27, 58, 59, 68 | Treasury summary, movements, reconciliation, receipts and remittances, bank accounts, payment methods | Payments, SEPA export; **no bank reconciliation** | **Deferred**: reconciliation is a large feature (statement import, matching, posting) |
+| 20-27, 58, 59, 68 | Treasury summary, movements, reconciliation, receipts and remittances, bank accounts, payment methods | Payments, SEPA export, bank accounts in Settings | **Built (reconciliation)**: statement import and matching to booked receipts/payments, no auto-posting. Not built: treasury charts, remittance/receipt batches, auto-posting of unmatched lines |
 | 28-35 | Tax summary, filing calendar, models 303/390/130/100/111/190/115/180/347/349 | Tax pack exports; no calendar | **Built**: filing calendar (deadlines of standard national regime; observed dates match). Model-by-model calculators **not built** (tax packs already export the figures) |
 | 36 | Virtual disk | document attachments | Deferred |
 | 37-39 | Reports hub, profit and loss, company reports | Reports, P&L | Kept |
@@ -55,6 +55,6 @@ OBSERVED = visible on a sheet; INFERRED = reasonable reading of a control; UNKNO
 2. Mobile statement PDF, invoice preview, and ageing on To collect.
 3. Web filing calendar for Spain and India.
 
-Not done in this pass, and why: bank reconciliation, fixed-asset register, custom fields, labels, per-model tax calculators and
+Added later the same day: bank reconciliation (server migration 0066, `bankrec` module, Accounting page panel), tested against a real local PostgreSQL 18 and seen in a browser against a running server. Not done in this pass, and why: fixed-asset register, custom fields, labels, per-model tax calculators and
 list-preference settings are each a separate feature with its own data model and tests. The phone UI was not rendered (no emulator
-in this environment). The web panel was type-checked, linted and its date logic tested, but not viewed in a browser.
+in this environment). The filing-calendar panel was not viewed in a browser; the bank reconciliation panel was, at desktop width only (the window would not shrink to phone width).
