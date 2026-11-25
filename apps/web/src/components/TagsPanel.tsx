@@ -47,11 +47,13 @@ export function TagsPanel({ kind, id }: { kind: TagKind; id: string }) {
     onError: (e) => setNote({ ok: false, text: msg(e) }),
   });
 
-  const t = tags.data;
-  const available = all.data ?? [];
-  const onItem = new Set((t?.labels ?? []).map((l) => l.id));
-  if (tags.isError) return null; // no permission to see this item's tags, or the item is gone
-  if (t && t.fields.length === 0 && available.length === 0 && t.labels.length === 0) return null;
+  // A bad or empty reply must never take the whole page down, so read both lists defensively.
+  const itemLabels = Array.isArray(tags.data?.labels) ? tags.data.labels : [];
+  const fields = Array.isArray(tags.data?.fields) ? tags.data.fields : [];
+  const available = Array.isArray(all.data) ? all.data : [];
+  const onItem = new Set(itemLabels.map((l) => l.id));
+  if (tags.isError || !tags.data) return null; // loading, no permission to see this item's tags, or the item is gone
+  if (fields.length === 0 && available.length === 0 && itemLabels.length === 0) return null;
 
   const toggle = (l: Label) => setLabels.mutate([...(onItem.has(l.id) ? [...onItem].filter((x) => x !== l.id) : [...onItem, l.id])]);
   const valueOf = (f: FieldValue) => draft[f.id] ?? f.value;
@@ -71,10 +73,10 @@ export function TagsPanel({ kind, id }: { kind: TagKind; id: string }) {
         {available.length === 0 ? <span className={ui.muted}>No labels yet. Add some under Settings.</span> : null}
       </div>
 
-      {(t?.fields.length ?? 0) > 0 ? (
+      {fields.length > 0 ? (
         editing ? (
           <form className={ui.formGrid} onSubmit={(e) => { e.preventDefault(); setFields.mutate(); }}>
-            {t!.fields.map((f) => (
+            {fields.map((f) => (
               <label key={f.id} className={ui.field}><span>{f.name}</span>
                 {f.type === "CHOICE" || f.type === "YES_NO" ? (
                   <select className={ui.select} value={valueOf(f)} onChange={(e) => setDraft({ ...draft, [f.id]: e.target.value })}>
@@ -92,7 +94,7 @@ export function TagsPanel({ kind, id }: { kind: TagKind; id: string }) {
         ) : (
           <>
             <dl style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "4px 16px", margin: "8px 0" }}>
-              {t!.fields.map((f) => <div key={f.id} style={{ display: "contents" }}><dt className={ui.muted}>{f.name}</dt><dd style={{ margin: 0 }}>{f.value ? (f.type === "YES_NO" ? (f.value === "yes" ? "Yes" : "No") : f.value) : "—"}</dd></div>)}
+              {fields.map((f) => <div key={f.id} style={{ display: "contents" }}><dt className={ui.muted}>{f.name}</dt><dd style={{ margin: 0 }}>{f.value ? (f.type === "YES_NO" ? (f.value === "yes" ? "Yes" : "No") : f.value) : "—"}</dd></div>)}
             </dl>
             <button type="button" className={ui.btnSecondary} onClick={() => { setEditing(true); setNote(null); }}>Edit details</button>
           </>
