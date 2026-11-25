@@ -72,7 +72,7 @@ export function Home({ go, open, addItem, addCustomer }: { go: (t: Go) => void; 
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg, paddingBottom: 36 }}>
-        <View style={{ gap: 2 }}><T v="small" muted>{greet}</T><T v="title" numberOfLines={1}>{businessName}</T></View>
+        <View style={{ gap: 2 }}><T v="small" muted>{greet}</T><T v="title" numberOfLines={2}>{businessName}</T></View>
 
         <View style={{ flexDirection: "row", gap: 8 }}>{RANGES.map((x) => <Chip key={x.k} title={x.t} active={range === x.k} onPress={() => setRange(x.k)} />)}</View>
 

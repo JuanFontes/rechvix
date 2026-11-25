@@ -29,7 +29,7 @@ export function statementHtml(s: StatementInput): string {
   const entries = statementEntries(s.invoices, s.payments);
   const closing = entries.length ? entries[entries.length - 1]!.balanceMinor : 0n;
   const ag = agingOf(s.invoices.filter((i) => !i.cancelled), s.now);
-  const rows = entries.map((e) => `<tr><td>${esc(new Date(e.at).toLocaleDateString())}</td><td>${esc(e.text)}</td><td class="r">${e.debitMinor ? m(e.debitMinor) : ""}</td><td class="r">${e.creditMinor ? m(e.creditMinor) : ""}</td><td class="r">${m(e.balanceMinor)}</td></tr>`).join("");
+  const rows = entries.map((e) => `<tr><td>${esc(new Date(e.at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</td><td>${esc(e.text)}</td><td class="r">${e.debitMinor ? m(e.debitMinor) : ""}</td><td class="r">${e.creditMinor ? m(e.creditMinor) : ""}</td><td class="r">${m(e.balanceMinor)}</td></tr>`).join("");
   const aging = BUCKETS.map((b) => `<td class="r"><div class="k">${b.label}</div>${m(ag.totals[b.key])}</td>`).join("");
   const open = s.invoices.filter((i) => dueOf(i) > 0n).length;
   return `<style>
@@ -39,8 +39,8 @@ export function statementHtml(s: StatementInput): string {
  .r{text-align:right;font-variant-numeric:tabular-nums} .box{border:1px solid #c3cac0;border-radius:6px;padding:10px;margin-top:14px} .big{font-size:16px;font-weight:700}
 </style>
 <h1>Statement of account</h1>
-<div class="muted">${esc(s.business.name)}${s.business.address ? `<br>${esc(s.business.address).replace(/\n/g, "<br>")}` : ""}${s.business.phone ? `<br>Phone ${esc(s.business.phone)}` : ""}</div>
-<div class="box"><div class="k">Customer</div><div class="big">${esc(s.customer)}</div>${s.phone ? `<div>${esc(s.phone)}</div>` : ""}<div class="muted">As of ${esc(new Date(s.now).toLocaleDateString())} · ${open} open invoice${open === 1 ? "" : "s"}</div></div>
+<div class="muted">${esc(s.business.name)}${s.business.address ? `<br>${esc(s.business.address).replace(/\n/g, "<br>")}` : ""}${s.business.phone ? `<br>Phone ${esc(s.business.phone)}` : ""}${s.business.gstin ? `<br>GSTIN ${esc(s.business.gstin)}` : ""}</div>
+<div class="box"><div class="k">Customer</div><div class="big">${esc(s.customer)}</div>${s.phone ? `<div>${esc(s.phone)}</div>` : ""}<div class="muted">As of ${esc(new Date(s.now).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))} · ${open} open invoice${open === 1 ? "" : "s"}</div></div>
 <table><thead><tr><th>Date</th><th>Details</th><th class="r">Billed</th><th class="r">Received</th><th class="r">Balance</th></tr></thead><tbody>${rows || `<tr><td colspan="5" class="muted">No activity yet.</td></tr>`}</tbody></table>
 <div class="box"><div class="k">${closing >= 0n ? "Balance owed to us" : "Advance held for the customer"}</div><div class="big">${m(closing >= 0n ? closing : -closing)}</div></div>
 <table><thead><tr>${BUCKETS.map((b) => `<th class="r">${b.label}</th>`).join("")}</tr></thead><tbody><tr>${aging}</tr></tbody></table>

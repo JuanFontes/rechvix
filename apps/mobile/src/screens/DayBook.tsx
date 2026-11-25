@@ -42,7 +42,7 @@ export function DayBook({ onBack, openSale, openCustomer }: { onBack: () => void
   const input = dayBookInput(sales, pays, credits, ledgers, new Map(parties.map((p) => [p.id, p.name])));
   const book = range ? buildDayBook(input, range, kind, q) : null;
   const label = PERIODS.find((p) => p.key === period)!.label;
-  const day = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const day = (ms: number) => new Date(ms).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
   async function share() {
     if (!book || !range || busy) return;
@@ -110,7 +110,7 @@ export function DayBook({ onBack, openSale, openCustomer }: { onBack: () => void
                 </View>
                 <View style={{ flex: 1 }}>
                   <T v="strong" numberOfLines={1} style={item.void ? { textDecorationLine: "line-through", color: c.muted } : undefined}>{item.party}</T>
-                  <T v="small" muted numberOfLines={1}>{item.kind === "payment" ? "Payment" : item.kind === "credit" ? "Credit note" : "Invoice"} · {item.ref}{item.detail ? ` · ${item.detail}` : ""} · {new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{item.void ? " · cancelled" : ""}</T>
+                  <T v="small" muted numberOfLines={2}>{item.kind === "payment" ? "Payment" : item.kind === "credit" ? "Credit note" : "Invoice"} · {item.ref}{item.detail ? ` · ${item.detail}` : ""} · {new Date(item.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}{item.void ? " · cancelled" : ""}</T>
                 </View>
                 <T v="money" color={tone} style={{ fontFamily: fonts.monoBold, ...(item.void ? { textDecorationLine: "line-through" as const } : null) }}>{item.kind === "credit" ? "-" : item.kind === "payment" ? "+" : ""}{m(item.amountMinor)}</T>
               </Tap>

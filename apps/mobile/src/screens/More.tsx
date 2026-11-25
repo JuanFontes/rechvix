@@ -34,7 +34,7 @@ export function More({ openCustomers, openProfile, openItems, openDesign, openQu
       if (!picked) return;
       const { file, counts } = inspectBackup(picked.text);
       const lines = [`${counts.sales ?? 0} invoices`, `${counts.payments ?? "no"} payments`, `${counts.parties ?? 0} customers`, `${counts.products ?? 0} items`, `${counts.quotes ?? 0} quotations`].join(", ");
-      Alert.alert("Replace everything on this phone?", `${picked.name} was made ${file.exportedAt ? new Date(file.exportedAt).toLocaleString() : "at an unknown time"} and holds ${lines}.\n\nEverything now on this phone is replaced. A copy of what is there now is saved first.`, [
+      Alert.alert("Replace everything on this phone?", `${picked.name} was made ${file.exportedAt ? new Date(file.exportedAt).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "at an unknown time"} and holds ${lines}.\n\nEverything now on this phone is replaced. A copy of what is there now is saved first.`, [
         { text: "Keep what I have", style: "cancel" },
         { text: "Replace", style: "destructive", onPress: async () => {
           try {

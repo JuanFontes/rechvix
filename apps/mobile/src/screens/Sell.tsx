@@ -108,13 +108,14 @@ export function Sell({ onDone, addItem }: { onDone: (localId: string) => void; a
 
   const canSave = !!cart.customerId && cart.lines.length > 0 && !errors && !saving;
   // With nothing typed: the items sold most often as one-tap chips; until there is any history, the first few items as a list so nothing is hidden.
-  const asList = !!q.trim() || frequent.length === 0;
-  const showing = q.trim() ? results.slice(0, 8) : frequent.length ? frequent : results.slice(0, 8);
+  const asList = !!q.trim() || (frequent.length === 0 && cart.lines.length === 0);
+  // Most-sold items first, then the rest of the catalogue, so a few sales never hide the other items.
+  const showing = q.trim() ? results.slice(0, 8) : [...frequent, ...results.filter((r) => !frequent.some((f) => f.variant_id === r.variant_id))].slice(0, 12);
   const owedBackText = cart.corrects && dec(cart.corrects.owedBack) > 0n ? m(toMinor(dec(cart.corrects.owedBack))) : null;
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ paddingBottom: 230 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingBottom: 200 }} keyboardShouldPersistTaps="handled">
         <Header title={cart.editing ? "Edit invoice" : "New sale"} sub={cart.editing ? cart.editing.number : cart.corrects ? `Re-issuing ${cart.corrects.number}` : undefined}
           right={cart.lines.length > 0 || cart.editing ? <Tap label="Clear bill" onPress={() => { cartActions.clear(profile?.pricingMode ?? "INCLUSIVE"); setProblem(null); }} style={{ minHeight: 44, paddingHorizontal: 12, justifyContent: "center" }}><T v="strong" color={c.negative}>{cart.editing ? "Cancel edit" : "Clear"}</T></Tap> : undefined} />
         <View style={{ padding: space.lg, gap: space.lg, paddingTop: space.xs }}>
@@ -246,13 +247,15 @@ export function Sell({ onDone, addItem }: { onDone: (localId: string) => void; a
 
       <View ref={anchor} pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 0 }} />
       <View style={{ position: "absolute", left: 0, right: 0, bottom: lift, padding: space.lg, backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.border, gap: 10 }}>
-        <View style={{ gap: 3 }}>
-          <Row k={`${cart.lines.length} item${cart.lines.length === 1 ? "" : "s"} · taxable value`} v={m(calc.taxableMinor)} />
-          {calc.components.map((x) => <Row key={x.label} k={x.label} v={m(x.minor)} />)}
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-            <View><T v="h3">Total</T>{incl ? <T v="small" muted>GST included</T> : null}</View>
+        <View style={{ gap: 2 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <T v="strong">Total</T>
+              <T v="small" muted numberOfLines={1}>{`${cart.lines.length} item${cart.lines.length === 1 ? "" : "s"}${incl ? " · GST included" : " · GST added"}`}</T>
+            </View>
             <T v="moneyLg" accessibilityLabel={`Total ${m(calc.totalMinor)}`}>{m(calc.totalMinor)}</T>
           </View>
+          {calc.components.length > 0 ? <T v="small" muted numberOfLines={1}>{`Taxable ${m(calc.taxableMinor)} · ${calc.components.map((x) => `${x.label} ${m(x.minor)}`).join(" · ")}`}</T> : null}
         </View>
         <Button title={cart.editing ? "Save changes" : balance > 0n && received > 0n ? "Save · part paid" : balance > 0n ? "Save · to collect" : "Save invoice"} onPress={() => void save()} disabled={!canSave} busy={saving} icon="checkmark-circle-outline" />
       </View>
@@ -264,7 +267,6 @@ export function Sell({ onDone, addItem }: { onDone: (localId: string) => void; a
   );
 }
 
-const Row = ({ k, v }: { k: string; v: string }) => <View style={{ flexDirection: "row", justifyContent: "space-between" }}><T v="small" muted>{k}</T><T v="money" style={{ fontSize: 14 }}>{v}</T></View>;
 
 /** One bill line. The quantity is a real text field (type 2.5 for two and a half kilos); +/- are conveniences, not the only way in. */
 function LineEditor({ line: l, mode, lineTotal, linked }: { line: CartLine; mode: "INCLUSIVE" | "EXCLUSIVE"; lineTotal: string; linked: boolean }) {

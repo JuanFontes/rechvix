@@ -39,7 +39,7 @@ export function Quotes({ onBack, open }: { onBack: () => void; open: (id: string
           <Tap label={`Quotation ${q.number} for ${q.payload.customerName}`} onPress={() => open(q.local_id)} style={{ minHeight: 68, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: space.lg }}>
             <View style={{ flex: 1 }}>
               <T v="strong" numberOfLines={1}>{q.payload.customerName}</T>
-              <T v="small" muted>{q.number} · {new Date(q.created_at).toLocaleDateString()}{q.valid_until ? ` · valid until ${new Date(q.valid_until).toLocaleDateString()}` : ""}</T>
+              <T v="small" muted>{q.number} · {new Date(q.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}{q.valid_until ? ` · valid until ${new Date(q.valid_until).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}</T>
             </View>
             <View style={{ alignItems: "flex-end", gap: 4 }}>
               <T v="money">{formatMinor(parseMinor(q.total), currency)}</T>
@@ -101,8 +101,8 @@ export function QuoteDetail({ id, onClose, goSell }: { id: string; onClose: () =
               <Row k="Taxable value" v={m(calc.taxableMinor)} />
               {calc.components.map((x) => <Row key={x.label} k={x.label} v={m(x.minor)} />)}
               <Row k="Total" v={m(parseMinor(q.total))} strong />
-              <Row k="Made" v={new Date(q.created_at).toLocaleDateString()} />
-              {q.valid_until ? <Row k="Valid until" v={new Date(q.valid_until).toLocaleDateString()} /> : null}
+              <Row k="Made" v={new Date(q.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} />
+              {q.valid_until ? <Row k="Valid until" v={new Date(q.valid_until).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} /> : null}
             </Card>
             <Label>Design</Label>
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>{TEMPLATES.map((t) => <Chip key={t.key} title={t.label} active={template === t.key} onPress={() => setTpl(t.key)} />)}</View>

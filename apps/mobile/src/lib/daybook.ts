@@ -93,8 +93,8 @@ const LABEL: Record<EntryKind, string> = { sale: "Invoice", payment: "Payment re
 /** A printable day book for the chosen range. */
 export function dayBookHtml(b: DayBook, r: Range, business: string, currency: string, periodLabel: string): string {
   const m = (x: bigint) => esc(formatMinor(x, currency));
-  const d = (ms: number) => esc(new Date(ms).toLocaleDateString());
-  const rows = b.entries.map((e) => `<tr${e.void ? ' class="void"' : ""}><td>${esc(new Date(e.at).toLocaleString())}</td><td>${LABEL[e.kind]}${e.void ? " (cancelled)" : ""}</td><td>${esc(e.party)}</td><td>${esc(e.ref)}${e.detail ? ` <span class="muted">${esc(e.detail)}</span>` : ""}</td><td class="r">${e.kind === "credit" ? "-" : ""}${m(e.amountMinor)}</td></tr>`).join("");
+  const d = (ms: number) => esc(new Date(ms).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }));
+  const rows = b.entries.map((e) => `<tr${e.void ? ' class="void"' : ""}><td>${esc(new Date(e.at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }))}</td><td>${LABEL[e.kind]}${e.void ? " (cancelled)" : ""}</td><td>${esc(e.party)}</td><td>${esc(e.ref)}${e.detail ? ` <span class="muted">${esc(e.detail)}</span>` : ""}</td><td class="r">${e.kind === "credit" ? "-" : ""}${m(e.amountMinor)}</td></tr>`).join("");
   return `<style>body{font-family:Roboto,Helvetica,Arial,sans-serif;color:#16211c;margin:26px;font-size:12px}h1{font-size:20px;margin:0}.muted{color:#5b6b62}
 table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:6px 8px;border-bottom:1px solid #dbdfd8;text-align:left}th{background:#eef0ec;font-size:11px}.r{text-align:right;font-variant-numeric:tabular-nums}.void{color:#8a948e;text-decoration:line-through}
 .sum{display:flex;gap:12px;margin-top:12px}.sum div{flex:1;border:1px solid #c3cac0;border-radius:6px;padding:8px}.k{font-size:10px;color:#5b6b62;text-transform:uppercase}.big{font-size:15px;font-weight:700}</style>

@@ -66,9 +66,9 @@ export function composeMessage(i: MessageInput): string {
   const single = plan.invoices.length === 1;
   const what = single ? `invoice ${nums[0]}` : `your ${plan.invoices.length} unpaid invoices (${nums.slice(0, 3).join(", ")}${nums.length > 3 ? ` and ${nums.length - 3} more` : ""})`;
   const partly = single && plan.paidMinor > 0n ? ` You have already paid ${money(plan.paidMinor)} of ${money(plan.totalMinor)}.` : "";
-  const when = plan.dueAt == null ? "" : plan.daysOverdue > 0 ? `, which was due on ${i.date(plan.dueAt)}` : `, due on ${i.date(plan.dueAt)}`;
+  const when = plan.dueAt == null ? "" : plan.daysOverdue > 0 ? (single ? `, which was due on ${i.date(plan.dueAt)}` : `, the oldest of which was due on ${i.date(plan.dueAt)}`) : (single ? `, due on ${i.date(plan.dueAt)}` : `, the earliest due on ${i.date(plan.dueAt)}`);
   const pdf = i.withPdf ? ` I'm sending ${single ? "the invoice" : "the invoices"} as a PDF as well.` : "";
-  return `Hello ${i.customer}, this is a friendly reminder from ${i.business} that ${what} has an outstanding balance of ${money(plan.outstandingMinor)}${when}.${partly}${pdf} Please let us know once it is paid. Thank you!`;
+  return `Hello ${i.customer}, this is a friendly reminder from ${i.business} that ${what} ${single ? "has" : "have"} an outstanding balance of ${money(plan.outstandingMinor)}${when}.${partly}${pdf} Please let us know once it is paid. Thank you!`;
 }
 
 /** Money you are about to remind about may have changed since the screen opened (a payment came in on another device). */

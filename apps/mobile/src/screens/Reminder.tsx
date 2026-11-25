@@ -28,7 +28,7 @@ export function ReminderComposer({ partyId, invoiceId, onClose }: { partyId: str
   const pays = useLocal((d) => d.all<Payment>("SELECT * FROM payments WHERE party_id=? ORDER BY paid_at", [partyId]), [] as Payment[], [partyId]);
   const now = useNow();
   const m = (x: bigint) => formatMinor(x, currency);
-  const day = (ms: number) => new Date(ms).toLocaleDateString();
+  const day = (ms: number) => new Date(ms).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
   const plan: ReminderPlan = useMemo(() => planReminder(ledger?.invoices ?? [], now, invoiceId), [ledger, now, invoiceId]);
   const single = plan.invoices.length === 1;
@@ -173,7 +173,7 @@ export function ReminderComposer({ partyId, invoiceId, onClose }: { partyId: str
                     <View key={r.id}>
                       <View style={{ padding: space.lg, gap: 6 }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                          <View style={{ flex: 1 }}><T v="strong">{CHANNEL_LABEL[(r.channel as ReminderChannel)] ?? r.channel}{r.with_pdf ? " · PDF" : ""}</T><T v="small" muted>{new Date(r.at).toLocaleString()} ({ago(r.at, now)}){r.outstanding ? ` · for ${m(parseMinor(r.outstanding))}` : ""}</T></View>
+                          <View style={{ flex: 1 }}><T v="strong">{CHANNEL_LABEL[(r.channel as ReminderChannel)] ?? r.channel}{r.with_pdf ? " · PDF" : ""}</T><T v="small" muted>{new Date(r.at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })} ({ago(r.at, now)}){r.outstanding ? ` · for ${m(parseMinor(r.outstanding))}` : ""}</T></View>
                           <Badge tone={TONE[st]} text={STATUS_LABEL[st]} icon={st === "marked_sent" ? "checkmark" : undefined} />
                         </View>
                         {st === "share_opened" ? <Tap label="Mark as sent" onPress={() => void markHistory(r)} style={{ minHeight: 36, justifyContent: "center", alignSelf: "flex-start" }}><T v="small" color={c.accent} style={{ fontFamily: fonts.bodySemi }}>I did send it, mark as sent</T></Tap> : null}

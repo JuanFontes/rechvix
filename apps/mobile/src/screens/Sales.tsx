@@ -62,7 +62,7 @@ export function SaleRow({ row, last, onPress }: { row: Row; last?: boolean; onPr
         <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
           <View style={{ flex: 1 }}>
             <T v="strong" numberOfLines={1}>{sale.payload.customerName}</T>
-            <T v="small" muted>{number ? `${number} · ` : ""}{new Date(sale.created_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</T>
+            <T v="small" muted>{number ? `${number} · ` : ""}{new Date(sale.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</T>
           </View>
           <T v="money" style={{ fontFamily: fonts.monoBold, textDecorationLine: sale.cancelled ? "line-through" : "none" }}>{formatMinor(total, currency)}</T>
         </View>
@@ -253,8 +253,8 @@ export function SaleDetail({ id, onClose, goSell, openCustomer }: { id: string; 
             <KV k="Received" v={m(paid)} />
             <KV k="Balance due" v={m(due)} />
             {refund > 0n ? <KV k="Owed back to customer" v={m(refund)} /> : null}
-            <KV k="Made" v={new Date(sale.created_at).toLocaleString()} />
-            {sale.due_date ? <KV k="Due by" v={new Date(sale.due_date).toLocaleDateString()} /> : null}
+            <KV plain k="Made" v={new Date(sale.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })} />
+            {sale.due_date ? <KV plain k="Due by" v={new Date(sale.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} /> : null}
             {sale.payload.note ? <KV k="Note" v={sale.payload.note} /> : null}
           </Card>
 
@@ -269,7 +269,7 @@ export function SaleDetail({ id, onClose, goSell, openCustomer }: { id: string; 
                       <View style={{ padding: space.lg, flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
                         <View style={{ flex: 1 }}>
                           <T v="strong" style={gone ? { textDecorationLine: "line-through", color: c.muted } : undefined}>{m(parseMinor(p.amount))} · {p.method.replace("_", " ").toLowerCase()}</T>
-                          <T v="small" muted>{new Date(p.paid_at).toLocaleString()}{gone ? ` · reversed: ${p.reversal_reason}` : p.state === "pending" && linked ? " · waiting to sync" : ""}</T>
+                          <T v="small" muted>{new Date(p.paid_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}{gone ? ` · reversed: ${p.reversal_reason}` : p.state === "pending" && linked ? " · waiting to sync" : ""}</T>
                         </View>
                       </View>
                       {i < pays.length - 1 ? <Divider /> : null}
@@ -290,7 +290,7 @@ export function SaleDetail({ id, onClose, goSell, openCustomer }: { id: string; 
                     <View style={{ padding: space.lg, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                       <View style={{ flex: 1 }}>
                         <T v="strong">{n.state === "issued" ? `${n.number} · -${m(parseMinor(n.total))}` : "Not issued yet"}</T>
-                        <T v="small" muted>{new Date(n.created_at).toLocaleDateString()} · {n.payload.goodsReturned ? "goods returned" : "money only"} · {n.reason}</T>
+                        <T v="small" muted>{new Date(n.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} · {n.payload.goodsReturned ? "goods returned" : "money only"} · {n.reason}</T>
                         {n.state !== "issued" ? <T v="small" color={c.warning}>The server has not issued it. Open Credit / return and tap Issue again.</T> : null}
                       </View>
                       {n.state === "issued" ? <Tap label={`Share credit note ${n.number}`} onPress={() => { if (db && profile) void shareCredit(db, n.local_id, profile, currency).catch(() => setMsg("Couldn't create the PDF. Try again.")); }} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}><Icon name="share-outline" size={22} color={c.accent} /></Tap> : null}
@@ -318,7 +318,7 @@ export function SaleDetail({ id, onClose, goSell, openCustomer }: { id: string; 
           {reminders.length > 0 ? (
             <View style={{ gap: 6 }}>
               <Label>Reminders for this invoice</Label>
-              {reminders.slice(0, 4).map((r) => <T key={r.id} v="small" muted>{new Date(r.at).toLocaleDateString()} · {CHANNEL_LABEL[r.channel as ReminderChannel] ?? r.channel}{r.with_pdf ? " + PDF" : ""} · {STATUS_LABEL[statusOf(r.status)]}</T>)}
+              {reminders.slice(0, 4).map((r) => <T key={r.id} v="small" muted>{new Date(r.at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} · {CHANNEL_LABEL[r.channel as ReminderChannel] ?? r.channel}{r.with_pdf ? " + PDF" : ""} · {STATUS_LABEL[statusOf(r.status)]}</T>)}
             </View>
           ) : null}
           {editable ? <Button title="Edit invoice" icon="create-outline" kind="quiet" onPress={startEdit} /> : null}
@@ -339,7 +339,7 @@ export function SaleDetail({ id, onClose, goSell, openCustomer }: { id: string; 
           {revisions.length > 0 ? (
             <View style={{ gap: 6 }}>
               <Label>Edit history</Label>
-              {revisions.map((r) => <T key={r.id} v="small" muted>Version {r.revision + 1} replaced {new Date(r.edited_at).toLocaleString()} · {r.reason}</T>)}
+              {revisions.map((r) => <T key={r.id} v="small" muted>Version {r.revision + 1} replaced {new Date(r.edited_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })} · {r.reason}</T>)}
             </View>
           ) : null}
           <Label>Reference</Label><T v="small" muted>{`mobile:${sale.local_id}`}</T>
@@ -461,7 +461,8 @@ function ReasonSheet({ title, body, action, onClose, onConfirm }: { title: strin
   );
 }
 
-function KV({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
-  return <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}><T v="small" muted>{k}</T><T v={strong ? "moneyLg" : "money"} style={{ fontSize: strong ? 18 : 14, flexShrink: 1, textAlign: "right" }}>{v}</T></View>;
+function KV({ k, v, strong, plain }: { k: string; v: string; strong?: boolean; plain?: boolean }) {
+  // Baseline-aligned so a small label and a larger figure sit on one line; `plain` is for text such as a date, which is not set in the money font.
+  return <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}><T v="small" muted>{k}</T>{plain ? <T v="body" style={{ flexShrink: 1, textAlign: "right" }}>{v}</T> : <T v={strong ? "moneyLg" : "money"} style={{ fontSize: strong ? 18 : 14, flexShrink: 1, textAlign: "right" }}>{v}</T>}</View>;
 }
 export { livePayments };

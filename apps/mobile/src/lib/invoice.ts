@@ -72,7 +72,7 @@ function body(d: InvoiceData) {
 const taxSummaryRows = (d: InvoiceData, m: (x: bigint) => string) =>
   d.calc.components.map((c) => `<tr><td>${c.label}</td><td class="r">${m(c.minor)}</td></tr>`).join("");
 
-const payLine = (p: PaymentEntry) => `${esc(new Date(p.at).toLocaleDateString())} · ${esc(p.method.replace(/_/g, " "))}${p.reference ? ` (${esc(p.reference)})` : ""}`;
+const payLine = (p: PaymentEntry) => `${esc(new Date(p.at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))} · ${esc(p.method.replace(/_/g, " "))}${p.reference ? ` (${esc(p.reference)})` : ""}`;
 
 interface SettleLine { k: string; v: string; tone: "hist" | "plain" | "due" }
 /** The lines under the invoice total: credit notes, each payment, total paid, balance due. Quotations and credit notes have none. */
@@ -92,7 +92,7 @@ export const invoiceTitle = (b: { country?: string; gstin?: string; gstRegistere
 const titleOf = (d: InvoiceData) => (d.kind === "quotation" ? "QUOTATION" : d.kind === "credit" ? "CREDIT NOTE" : d.kind === "delivery" ? "DELIVERY NOTE" : invoiceTitle({ ...d.business, gstRegistered: d.gstRegistered }));
 const wordOf = (d: InvoiceData) => (d.kind === "quotation" ? "Quotation" : d.kind === "credit" ? "Credit note" : d.kind === "delivery" ? "Delivery note" : invoiceTitle({ ...d.business, gstRegistered: d.gstRegistered }) === "BILL OF SUPPLY" ? "Bill of supply" : "Invoice");
 /** Pay status for an invoice; for a quotation, how long the offer stands; nothing for a credit note. */
-const statusText = (d: InvoiceData) => (!d.kind || d.kind === "invoice" ? STATUS_TEXT[d.payment.status] : d.kind === "quotation" && d.validUntil ? `Valid until ${new Date(d.validUntil).toLocaleDateString()}` : d.kind === "credit" && d.against ? `Against ${d.against}` : "");
+const statusText = (d: InvoiceData) => (!d.kind || d.kind === "invoice" ? STATUS_TEXT[d.payment.status] : d.kind === "quotation" && d.validUntil ? `Valid until ${new Date(d.validUntil).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : d.kind === "credit" && d.against ? `Against ${d.against}` : "");
 
 const paymentRows = (d: InvoiceData, m: (x: bigint) => string) =>
   settleLines(d, m).map((l) => `<tr class="${l.tone === "hist" ? "hist" : l.tone === "due" ? "due" : ""}"><td>${l.k}</td><td class="r">${l.v}</td></tr>`).join("");
@@ -118,7 +118,7 @@ function classic(d: InvoiceData): string {
  .status{display:inline-block;border:2px solid #0f6e5c;color:#0f6e5c;padding:2px 8px;font-weight:700;letter-spacing:1px} .stamp{color:#9c3a26;border:3px solid #9c3a26;font-weight:800;font-size:22px;padding:2px 10px;display:inline-block;transform:rotate(-6deg);margin:6px 0}
 </style>
 <div class="head"><div><h1>${esc(d.business.name || "Tax invoice")}</h1><div class="muted">${headerInfo(d)}</div></div>
- <div class="meta"><div class="big">${titleOf(d)}</div><div>${esc(d.number)}</div><div class="muted">${esc(new Date(d.date).toLocaleDateString())}</div><div class="status">${esc(statusText(d))}</div>${flags(d)}</div></div>
+ <div class="meta"><div class="big">${titleOf(d)}</div><div>${esc(d.number)}</div><div class="muted">${esc(new Date(d.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</div><div class="status">${esc(statusText(d))}</div>${flags(d)}</div></div>
 <div style="margin-top:12px">${customerBlock(d)}</div>
 <table><thead><tr><th>#</th><th>Item</th><th>HSN</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Disc.</th><th class="r">Taxable</th><th class="r">GST</th><th class="r">Amount</th></tr></thead><tbody>${lines}</tbody></table>
 ${incl ? `<div class="muted" style="margin-top:4px">* Rates include GST. Tax is shown separately below.</div>` : ""}
@@ -142,7 +142,7 @@ function modern(d: InvoiceData): string {
  .total b{font-size:26px} .stamp{color:#9c3a26;font-weight:800;letter-spacing:2px;margin-top:8px}
 </style>
 <div class="top"><div><h1>${esc(d.business.name || "Invoice")}</h1><div class="muted">${headerInfo(d)}</div></div>
- <div style="text-align:right"><div class="muted">${wordOf(d)}</div><div class="big">${esc(d.number)}</div><div class="muted">${esc(new Date(d.date).toLocaleDateString())}</div>${statusText(d) ? `<div class="pill ${d.kind && d.kind !== "invoice" ? "part" : d.payment.status === "PAID" ? "" : d.payment.status === "PARTIAL" ? "part" : "due"}">${esc(statusText(d))}</div>` : ""}${flags(d)}</div></div>
+ <div style="text-align:right"><div class="muted">${wordOf(d)}</div><div class="big">${esc(d.number)}</div><div class="muted">${esc(new Date(d.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</div>${statusText(d) ? `<div class="pill ${d.kind && d.kind !== "invoice" ? "part" : d.payment.status === "PAID" ? "" : d.payment.status === "PARTIAL" ? "part" : "due"}">${esc(statusText(d))}</div>` : ""}${flags(d)}</div></div>
 <div class="k">Billed to</div><div class="big">${esc(d.customerName)}</div><div class="muted">${d.customerGstin ? `GSTIN ${esc(d.customerGstin)} · ` : ""}${d.customerPhone ? esc(d.customerPhone) + " · " : ""}Place of supply: ${d.placeOfSupply ? esc(d.placeOfSupply) : "customer state not recorded (seller's state)"}</div>
 <div class="k">Items</div>${lines}
 <div style="margin-top:14px"><div class="row"><span>Taxable value</span><span>${m(d.calc.taxableMinor)}</span></div>${comps}</div>
@@ -162,7 +162,7 @@ function thermal(d: InvoiceData): string {
 </style>
 <div class="c b" style="font-size:14px">${esc(d.business.name || "Invoice")}</div><div class="c">${headerInfo(d)}</div><hr>
 <div class="c b">${titleOf(d)}</div>
-<div class="ln"><span>${esc(d.number)}</span><span>${esc(new Date(d.date).toLocaleDateString())}</span></div><div>To: ${esc(d.customerName)}${d.customerGstin ? ` (GSTIN ${esc(d.customerGstin)})` : ""}</div><div>Supply: ${d.placeOfSupply ? esc(d.placeOfSupply) : "customer state not recorded"}</div>${d.cancelled ? `<div class="c b">** CANCELLED **</div>` : ""}${d.corrects ? `<div>Corrects ${esc(d.corrects)}</div>` : ""}<hr>
+<div class="ln"><span>${esc(d.number)}</span><span>${esc(new Date(d.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</span></div><div>To: ${esc(d.customerName)}${d.customerGstin ? ` (GSTIN ${esc(d.customerGstin)})` : ""}</div><div>Supply: ${d.placeOfSupply ? esc(d.placeOfSupply) : "customer state not recorded"}</div>${d.cancelled ? `<div class="c b">** CANCELLED **</div>` : ""}${d.corrects ? `<div>Corrects ${esc(d.corrects)}</div>` : ""}<hr>
 ${lines}<hr>
 <div class="ln"><span>Taxable value</span><span>${m(d.calc.taxableMinor)}</span></div>${comps}
 <div class="ln tot"><span>TOTAL</span><span>${m(d.calc.totalMinor)}</span></div>${incl ? `<div class="c">(prices include GST)</div>` : ""}<hr>
@@ -184,7 +184,7 @@ function delivery(d: InvoiceData): string {
  .top{display:flex;justify-content:space-between;gap:16px} .big{font-size:18px;font-weight:700} .sign{display:flex;justify-content:space-between;margin-top:70px} .sign div{border-top:1px solid #16211c;padding-top:6px;width:42%;text-align:center}
 </style>
 <div class="top"><div><h1>${esc(d.business.name || "Delivery note")}</h1><div class="muted">${headerInfo(d)}</div></div>
- <div style="text-align:right"><div class="big">DELIVERY NOTE</div><div>${esc(d.number)}</div><div class="muted">${esc(new Date(d.date).toLocaleDateString())}</div></div></div>
+ <div style="text-align:right"><div class="big">DELIVERY NOTE</div><div>${esc(d.number)}</div><div class="muted">${esc(new Date(d.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</div></div></div>
 <div style="margin-top:14px">${customerBlock(d)}</div>
 <table><thead><tr><th style="width:36px">#</th><th>Item</th><th class="r" style="width:120px">Quantity</th></tr></thead><tbody>${rows}</tbody></table>
 ${d.note ? `<div style="margin-top:12px" class="muted">${nl2br(d.note)}</div>` : ""}

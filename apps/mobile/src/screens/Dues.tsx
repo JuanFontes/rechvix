@@ -16,7 +16,7 @@ import { owing, type CustomerLedger } from "../lib/receivables";
 import { livePayments } from "../lib/sale";
 import { uid, useApp } from "../state/app";
 import { useLedgers } from "../state/ledgers";
-import { fonts, radius, space, usePalette } from "../theme";
+import { dark as darkPalette, fonts, radius, space, usePalette } from "../theme";
 import { Badge, Button, Card, Chip, Divider, Empty, Field, Header, Icon, Label, Screen, Tap } from "../ui/kit";
 import { ReminderComposer, lastReminderText } from "./Reminder";
 import { T } from "../ui/text";
@@ -47,7 +47,9 @@ export function Dues({ open }: { open: (partyId: string) => void }) {
   for (const r of reminders) lastBy.set(r.party_id, [...(lastBy.get(r.party_id) ?? []), r]);
   const now = useNow();
   const aging = agingOf(ledgers.flatMap((l) => l.invoices), now);
-  const ageTone: Record<string, string> = { current: c.info, "1-30": c.warning, "31-60": c.warning, "61-90": c.negative, "90+": c.negative };
+  // Five steps that stay apart in a bar and in dark mode: blue, amber, orange, red, deep red (the two middle steps were both brown).
+  const dark = c === darkPalette;
+  const ageTone: Record<string, string> = { current: c.info, "1-30": dark ? "#f2c14e" : "#c9a227", "31-60": dark ? "#ff9f4a" : "#d9701f", "61-90": c.negative, "90+": dark ? "#ff5a4d" : "#6e1d12" };
   const serverTotal = server.reduce((n, b) => n + parseMinor(b.total), 0n);
   const needle = q.trim().toLowerCase();
   const list = ledgers
@@ -104,7 +106,8 @@ export function Dues({ open }: { open: (partyId: string) => void }) {
                     </View>
                     <View style={{ flex: 1 }}>
                       <T v="strong" numberOfLines={1}>{l.name}</T>
-                      <T v="small" muted numberOfLines={1}>{phone ? `${phone} · ` : ""}last bill {new Date(l.lastBilledAt).toLocaleDateString()}</T>
+                      {phone ? <T v="small" muted numberOfLines={1}>{phone}</T> : null}
+                      <T v="small" muted numberOfLines={1}>Last bill {new Date(l.lastBilledAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</T>
                       {l.balance.owedMinor > 0n && lastReminderText(lastBy.get(l.partyId) ?? [], now) ? <T v="small" color={c.info} numberOfLines={1}>{lastReminderText(lastBy.get(l.partyId) ?? [], now)}</T> : null}
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
@@ -185,8 +188,8 @@ export function CustomerLedgerScreen({ partyId, onBack, openSale }: { partyId: s
                       <Tap label={`Invoice ${i.number}, ${m(dueOf(i))} due`} onPress={() => openSale(i.id)} style={{ minHeight: 64, flexDirection: "row", alignItems: "center", gap: 12, padding: space.lg }}>
                         <View style={{ flex: 1 }}>
                           <T v="strong">{i.number}</T>
-                          <T v="small" muted>{new Date(i.issuedAt).toLocaleDateString()} · total {m(i.totalMinor)}{i.paidMinor > 0n ? ` · paid ${m(i.paidMinor)}` : ""}</T>
-                          {od > 0 ? <T v="small" color={c.negative}>{od} day{od === 1 ? "" : "s"} overdue ({ageBucket(i.dueAt, now)})</T> : i.dueAt ? <T v="small" muted>Due {new Date(i.dueAt).toLocaleDateString()}</T> : null}
+                          <T v="small" muted>{new Date(i.issuedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} · total {m(i.totalMinor)}{i.paidMinor > 0n ? ` · paid ${m(i.paidMinor)}` : ""}</T>
+                          {od > 0 ? <T v="small" color={c.negative}>{od} day{od === 1 ? "" : "s"} overdue ({ageBucket(i.dueAt, now)})</T> : i.dueAt ? <T v="small" muted>Due {new Date(i.dueAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</T> : null}
                         </View>
                         <T v="money" style={{ fontFamily: fonts.monoBold }}>{m(dueOf(i))}</T>
                         <View style={{ gap: 6 }}>
@@ -216,10 +219,10 @@ export function CustomerLedgerScreen({ partyId, onBack, openSale }: { partyId: s
                           <T v="strong" style={void_ ? { textDecorationLine: "line-through", color: c.muted } : undefined}>{m(parseMinor(p.amount))} · {p.method.replace("_", " ").toLowerCase()}</T>
                           {void_ ? <Badge tone="neutral" text="Reversed" /> : p.state === "pending" ? (linked ? <Badge tone="info" icon="cloud-upload-outline" text="Waiting to sync" /> : <Badge tone="good" text="Saved on phone" />) : p.state === "failed" ? <Badge tone="bad" text="Sync failed" /> : <Badge tone="good" text="Recorded" />}
                         </View>
-                        <T v="small" muted>{new Date(p.paid_at).toLocaleString()} · {inv ? inv.number : "advance (not on an invoice)"}{p.reference ? ` · ref ${p.reference}` : ""}</T>
+                        <T v="small" muted>{new Date(p.paid_at).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })} · {inv ? inv.number : "advance (not on an invoice)"}{p.reference ? ` · ref ${p.reference}` : ""}</T>
                         {void_ ? <T v="small" muted>Reversed: {p.reversal_reason}</T> : null}
                         {p.state === "failed" && p.error ? <T v="small" color={c.negative}>{p.error}</T> : null}
-                        {!void_ ? <Tap label="Share receipt" onPress={() => void Share.share({ message: `Payment received: ${m(parseMinor(p.amount))} from ${ledger.name} on ${new Date(p.paid_at).toLocaleDateString()} (${p.method.replace("_", " ").toLowerCase()})${inv ? ` towards invoice ${inv.number}` : " as an advance"}${p.reference ? `, ref ${p.reference}` : ""}. Thank you! - ${businessName}` })} style={{ minHeight: 36, justifyContent: "center", alignSelf: "flex-start" }}><T v="small" color={c.accent} style={{ fontFamily: fonts.bodySemi }}>Share receipt</T></Tap> : null}
+                        {!void_ ? <Tap label="Share receipt" onPress={() => void Share.share({ message: `Payment received: ${m(parseMinor(p.amount))} from ${ledger.name} on ${new Date(p.paid_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} (${p.method.replace("_", " ").toLowerCase()})${inv ? ` towards invoice ${inv.number}` : " as an advance"}${p.reference ? `, ref ${p.reference}` : ""}. Thank you! - ${businessName}` })} style={{ minHeight: 36, justifyContent: "center", alignSelf: "flex-start" }}><T v="small" color={c.accent} style={{ fontFamily: fonts.bodySemi }}>Share receipt</T></Tap> : null}
                         {!void_ ? <Tap label="Reverse this payment" onPress={() => setReversing(p)} style={{ minHeight: 36, justifyContent: "center", alignSelf: "flex-start" }}><T v="small" color={c.negative} style={{ fontFamily: fonts.bodySemi }}>Reverse</T></Tap> : null}
                       </View>
                       {i < pays.length - 1 ? <Divider /> : null}
@@ -237,7 +240,7 @@ export function CustomerLedgerScreen({ partyId, onBack, openSale }: { partyId: s
                 {settled.slice(0, 15).map((i, k, a) => (
                   <View key={i.id}>
                     <Tap label={`Invoice ${i.number}`} onPress={() => openSale(i.id)} style={{ minHeight: 56, flexDirection: "row", alignItems: "center", gap: 12, padding: space.lg }}>
-                      <View style={{ flex: 1 }}><T v="strong">{i.number}</T><T v="small" muted>{new Date(i.issuedAt).toLocaleDateString()}</T></View>
+                      <View style={{ flex: 1 }}><T v="strong">{i.number}</T><T v="small" muted>{new Date(i.issuedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</T></View>
                       <T v="money">{m(i.totalMinor)}</T><Badge tone="good" text="Paid" />
                     </Tap>
                     {k < a.length - 1 ? <Divider /> : null}
