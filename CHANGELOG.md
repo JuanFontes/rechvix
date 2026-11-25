@@ -13,7 +13,7 @@
 
 # Changelog
 
-## Unreleased
+## 0.25.0
 
 - **Fixed-asset register** (Accounting > Fixed assets; migration 0067, `fixedassets` module). Add an asset with cost, value at end of life, useful life and straight-line or declining-balance depreciation; optionally book the purchase at the same time (bank, cash, accounts payable or opening balance). "Book depreciation" posts one journal per month for all assets (Dr 5800 Depreciation Expense, Cr 1590 Accumulated Depreciation), never doubles a month already booked and never takes an asset below its end-of-life value; the last straight-line month absorbs rounding. Selling or scrapping removes cost and accumulated depreciation and books the gain or loss to 5950, and needs depreciation up to the previous month first. The accounts 1500, 1590, 5800 and 5950 are created the first time they are needed, so existing organisations need no extra step. Period locks apply. Needs `accounting.view` / `accounting.post`.
 - **Labels and custom fields** (Settings > Labels and custom fields; migration 0068, `tagging` module). Coloured labels and typed extra fields (text, number, date, yes/no, pick-from-a-list) for contacts, products, sales documents and purchase documents. The contact page shows a "Labels and details" panel to toggle labels and fill the fields; answers are type-checked by the server and deleting a label or field removes it everywhere. Defining labels and fields needs `settings.manage`; tagging an item needs the same permission as editing it.
