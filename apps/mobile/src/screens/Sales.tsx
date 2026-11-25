@@ -2,15 +2,16 @@ import React, { useState } from "react";
 import { Alert, FlatList, Modal, ScrollView, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  allPayments, cancelLocalSale, canEditSale, creditNotesForSale, discardSale, getSale, listSales, paymentsForSale, recentServerDocs, retrySale, saleRevisions,
-  type CreditNote, type Payment, type Sale, type SaleRevision, type ServerDoc,
+  allPayments, cancelLocalSale, canEditSale, creditNotesForSale, discardSale, getSale, listSales, paymentsForSale, recentServerDocs, remindersForSale, retrySale, saleRevisions,
+  type CreditNote, type Payment, type ReminderRow, type Sale, type SaleRevision, type ServerDoc,
 } from "../db/repo";
 import { dec, decToString, minorToString, parseMinor } from "../lib/decimal";
 import { useLocal } from "../lib/hooks";
 import { TEMPLATES, invoiceTitle, type InvoiceTemplate } from "../lib/invoice";
 import { formatMinor } from "../lib/money";
 import { creditsBySale, payloadCalc, payStatus, saleTotalMinor, salePaidMinor, totalMismatch, livePayments } from "../lib/sale";
-import { shareCredit, shareDeliveryNote, shareSale } from "../lib/share";
+import { statusOf, STATUS_LABEL, CHANNEL_LABEL, type ReminderChannel } from "../lib/reminder";
+import { buildInvoiceData, previewInvoice, shareCredit, shareDeliveryNote, shareSale } from "../lib/share";
 import { cartActions, getCart, cartIsEmpty } from "../state/cart";
 import { uid, useApp } from "../state/app";
 import { CorrectionError } from "../sync/correct";
@@ -18,7 +19,9 @@ import { CreditNoteError, creditedQty, type ReturnPick } from "../sync/creditNot
 import { fonts, radius, space, usePalette } from "../theme";
 import { Badge, Body, Button, Card, Chip, Divider, Empty, Field, Header, Icon, Label, Screen, Tap } from "../ui/kit";
 import { T } from "../ui/text";
-import { PaymentSheet, useLedgers } from "./Dues";
+import { PaymentSheet } from "./Dues";
+import { ReminderComposer } from "./Reminder";
+import { useLedgers } from "../state/ledgers";
 
 type Tone = "good" | "warn" | "bad" | "info" | "neutral";
 export interface Row { sale: Sale; total: bigint; paid: bigint; status: "PAID" | "PARTIAL" | "UNPAID"; payments: Payment[] }
@@ -160,6 +163,9 @@ export function SaleDetail({ id, onClose, goSell, openCustomer }: { id: string; 
   const [template, setTemplate] = useState<InvoiceTemplate | null>(null);
   const [sharing, setSharing] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [reminding, setReminding] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const reminders = useLocal((d) => remindersForSale(d, id), [] as ReminderRow[], [id]);
   const [ask, setAsk] = useState<null | "correct" | "cancel">(null);
   const [msg, setMsg] = useState<string | null>(null);
   if (!sale) return <Screen><Header title="Invoice" onBack={onClose} /><Empty title="Invoice not found" /></Screen>;
@@ -182,6 +188,15 @@ export function SaleDetail({ id, onClose, goSell, openCustomer }: { id: string; 
     if (!db || !profile || !sale) return;
     setSharing(true); setMsg(null);
     try { await shareSale(db, sale.local_id, profile, currency, tpl); } catch { setMsg("Couldn't create the PDF. Try again."); } finally { setSharing(false); }
+  }
+  async function preview() {
+    if (!db || !profile || !sale) return;
+    setPreviewing(true); setMsg(null);
+    try {
+      const d = await buildInvoiceData(db, sale.local_id, profile, currency);
+      if (!d) throw new Error("missing");
+      await previewInvoice(d, tpl);
+    } catch { setMsg("Couldn't open the PDF preview. Try again."); } finally { setPreviewing(false); }
   }
   function startEdit() {
     const go = () => { cartActions.load(sale!.payload, { editing: { localId: sale!.local_id, number: sale!.local_number ?? "" } }); goSell(); };
@@ -293,11 +308,19 @@ export function SaleDetail({ id, onClose, goSell, openCustomer }: { id: string; 
               {TEMPLATES.map((t) => <Chip key={t.key} title={t.label} active={tpl === t.key} onPress={() => setTemplate(t.key)} />)}
             </ScrollView>
           </View>
+          <Button title="Preview PDF" icon="eye-outline" kind="quiet" onPress={() => void preview()} busy={previewing} />
           <Button title={`Share ${invoiceTitle({ ...(profile ?? {}), gstRegistered: !!org?.gstStateCode }) === "BILL OF SUPPLY" ? "bill of supply" : "invoice"} (PDF)`} icon="share-outline" onPress={() => void share()} busy={sharing} />
           {!sale.cancelled ? <Button title="Share delivery note (PDF, no prices)" icon="cube-outline" kind="quiet" onPress={() => { if (db && profile) void shareDeliveryNote(db, sale.local_id, profile, currency).catch(() => setMsg("Couldn't create the PDF. Try again.")); }} /> : null}
           {msg ? <T v="small" color={c.negative}>{msg}</T> : null}
 
           {!sale.cancelled && due > 0n && ledger ? <Button title="Record payment" icon="cash-outline" kind="quiet" onPress={() => setPaying(true)} /> : null}
+          {!sale.cancelled && due > 0n && ledger ? <Button title="Send payment reminder" icon="notifications-outline" kind="quiet" onPress={() => setReminding(true)} /> : null}
+          {reminders.length > 0 ? (
+            <View style={{ gap: 6 }}>
+              <Label>Reminders for this invoice</Label>
+              {reminders.slice(0, 4).map((r) => <T key={r.id} v="small" muted>{new Date(r.at).toLocaleDateString()} · {CHANNEL_LABEL[r.channel as ReminderChannel] ?? r.channel}{r.with_pdf ? " + PDF" : ""} · {STATUS_LABEL[statusOf(r.status)]}</T>)}
+            </View>
+          ) : null}
           {editable ? <Button title="Edit invoice" icon="create-outline" kind="quiet" onPress={startEdit} /> : null}
           {correctable ? <Button title="Correct invoice" icon="swap-horizontal-outline" kind="quiet" disabled={!linked || !online} onPress={() => setAsk("correct")} /> : null}
           {correctable ? <Button title="Credit / return items" icon="return-down-back-outline" kind="quiet" disabled={!linked || !online} onPress={() => setCrediting(true)} /> : null}
@@ -322,6 +345,7 @@ export function SaleDetail({ id, onClose, goSell, openCustomer }: { id: string; 
           <Label>Reference</Label><T v="small" muted>{`mobile:${sale.local_id}`}</T>
         </View>
       </ScrollView>
+      {reminding && ledger ? <ReminderComposer partyId={sale.payload.customerId} invoiceId={sale.local_id} onClose={() => setReminding(false)} /> : null}
       {paying && ledger ? <PaymentSheet ledger={ledger} invoiceId={sale.local_id} onClose={() => setPaying(false)} onSaved={() => { setPaying(false); changed(); }} /> : null}
       {crediting ? (
         <CreditSheet sale={sale} notes={notes} currency={currency} onClose={() => setCrediting(false)}

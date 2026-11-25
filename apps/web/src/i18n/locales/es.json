@@ -149,7 +149,38 @@
     "colKind": "Clase",
     "pricesIncludeTax": "Precios con impuestos incluidos",
     "pricesIncludeTaxHelp": "Los precios son lo que paga el cliente; el impuesto se extrae de cada precio en lugar de sumarse.",
-    "categoryRequired": "Elige una categoría de impuesto para este producto."
+    "categoryRequired": "Elige una categoría de impuesto para este producto.",
+    "filing": {
+      "title": "Calendario de presentaciones",
+      "help": "Cuándo vencen normalmente las declaraciones fiscales periódicas del país de esta empresa, primero la más próxima. Solo se muestran las que se pueden presentar ya o vencen en los próximos cuatro meses.",
+      "none": "No vence ninguna declaración en los próximos cuatro meses.",
+      "colReturn": "Declaración",
+      "colPeriod": "Periodo",
+      "colDue": "Fecha límite",
+      "colStatus": "Estado",
+      "periodQuarter": "{{n}}T {{year}}",
+      "periodMonth": "{{month}} {{year}}",
+      "periodYear": "Ejercicio {{year}}",
+      "dueToday": "Vence hoy",
+      "openDays_one": "Ya se puede presentar, vence en {{count}} día",
+      "openDays_other": "Ya se puede presentar, vence en {{count}} días",
+      "opensLater_one": "Se abre el {{date}}, vence en {{count}} día",
+      "opensLater_other": "Se abre el {{date}}, vence en {{count}} días",
+      "disclaimer": "Un recordatorio, no una presentación: Rechvix no presenta declaraciones y no sabe si una ya se presentó. Son los plazos nacionales habituales. Los regímenes regionales, los sistemas trimestrales para pequeños contribuyentes, las prórrogas y los festivos pueden modificarlos, así que confírmelos con su administración tributaria o su gestor.",
+      "form": {
+        "es303": "Declaración de IVA",
+        "es130": "Pago fraccionado del IRPF, autónomos",
+        "es111": "Retenciones de trabajadores y profesionales",
+        "es115": "Retenciones de alquileres",
+        "es349": "Operaciones intracomunitarias (presentación trimestral)",
+        "es390": "Resumen anual de IVA",
+        "es190": "Resumen anual de retenciones (trabajadores y profesionales)",
+        "es180": "Resumen anual de retenciones de alquileres",
+        "es347": "Operaciones anuales con terceras personas",
+        "ingstr1": "Ventas emitidas, presentación mensual",
+        "ingstr3b": "Declaración resumen y pago del impuesto, presentación mensual"
+      }
+    }
   },
   "region": {
     "heading": "Idioma y región",

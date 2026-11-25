@@ -149,7 +149,38 @@
     "colKind": "Type",
     "pricesIncludeTax": "Prix TTC",
     "pricesIncludeTaxHelp": "Les prix sont ceux payés par le client ; la taxe est extraite de chaque prix au lieu d'être ajoutée.",
-    "categoryRequired": "Choisissez une catégorie de taxe pour ce produit."
+    "categoryRequired": "Choisissez une catégorie de taxe pour ce produit.",
+    "filing": {
+      "title": "Calendrier des déclarations",
+      "help": "Quand les déclarations fiscales périodiques du pays de cette société sont normalement dues, la plus proche d'abord. Seules celles qui peuvent être déposées maintenant ou qui arrivent à échéance dans les quatre prochains mois sont listées.",
+      "none": "Aucune déclaration n'arrive à échéance dans les quatre prochains mois.",
+      "colReturn": "Déclaration",
+      "colPeriod": "Période",
+      "colDue": "Échéance",
+      "colStatus": "Statut",
+      "periodQuarter": "T{{n}} {{year}}",
+      "periodMonth": "{{month}} {{year}}",
+      "periodYear": "Année {{year}}",
+      "dueToday": "Échéance aujourd'hui",
+      "openDays_one": "Dépôt possible, échéance dans {{count}} jour",
+      "openDays_other": "Dépôt possible, échéance dans {{count}} jours",
+      "opensLater_one": "Ouvre le {{date}}, échéance dans {{count}} jour",
+      "opensLater_other": "Ouvre le {{date}}, échéance dans {{count}} jours",
+      "disclaimer": "Un rappel, pas un dépôt : Rechvix ne dépose aucune déclaration et ne peut pas savoir si une déclaration a été déposée. Ce sont les échéances nationales habituelles. Les régimes régionaux, les régimes trimestriels des petits déclarants, les prorogations et les jours fériés peuvent les décaler ; confirmez-les auprès de votre administration fiscale ou de votre comptable.",
+      "form": {
+        "es303": "Déclaration de TVA (IVA)",
+        "es130": "Acompte d'impôt sur le revenu, indépendants",
+        "es111": "Retenues sur salaires et honoraires",
+        "es115": "Retenues sur loyers",
+        "es349": "Opérations intracommunautaires (déclarants trimestriels)",
+        "es390": "Récapitulatif annuel de TVA",
+        "es190": "Récapitulatif annuel des retenues (salaires et honoraires)",
+        "es180": "Récapitulatif annuel des retenues sur loyers",
+        "es347": "Opérations annuelles avec des tiers",
+        "ingstr1": "Ventes sortantes, déclarants mensuels",
+        "ingstr3b": "Déclaration récapitulative et paiement de l'impôt, déclarants mensuels"
+      }
+    }
   },
   "region": {
     "heading": "Langue et région",

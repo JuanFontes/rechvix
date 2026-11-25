@@ -335,8 +335,18 @@ export const markSaleCancelled = (db: Db, localId: string): Promise<void> => db.
 
 // ---------------------------------------------------------------- reminders and server balances
 
-export const addReminder = (db: Db, partyId: string, at: number, channel: string): Promise<void> => db.run("INSERT INTO reminders(party_id,at,channel) VALUES(?,?,?)", [partyId, at, channel]);
-export const remindersFor = (db: Db, partyId: string): Promise<{ at: number; channel: string }[]> => db.all("SELECT at, channel FROM reminders WHERE party_id=? ORDER BY at DESC", [partyId]);
+export interface ReminderRow { id: number; party_id: string; at: number; channel: string; sale_local_id: string | null; status: string; with_pdf: number; outstanding: string | null; message: string }
+export interface NewReminder { partyId: string; at: number; channel: string; saleLocalId?: string | null; status?: string; withPdf?: boolean; outstanding?: string | null; message?: string }
+/** Adds a reminder record and returns its id. Status defaults to "share_opened", the only thing the phone ever knew before v6. */
+export async function addReminder(db: Db, partyId: string, at: number, channel: string, extra: Partial<NewReminder> = {}): Promise<number> {
+  await db.run("INSERT INTO reminders(party_id,at,channel,sale_local_id,status,with_pdf,outstanding,message) VALUES(?,?,?,?,?,?,?,?)",
+    [partyId, at, channel, extra.saleLocalId ?? null, extra.status ?? "share_opened", extra.withPdf ? 1 : 0, extra.outstanding ?? null, extra.message ?? ""]);
+  return (await db.first<{ id: number }>("SELECT last_insert_rowid() AS id"))!.id;
+}
+export const setReminderStatus = (db: Db, id: number, status: string): Promise<void> => db.run("UPDATE reminders SET status=? WHERE id=?", [status, id]);
+export const remindersFor = (db: Db, partyId: string): Promise<ReminderRow[]> => db.all<ReminderRow>("SELECT * FROM reminders WHERE party_id=? ORDER BY at DESC, id DESC", [partyId]);
+export const remindersForSale = (db: Db, saleLocalId: string): Promise<ReminderRow[]> => db.all<ReminderRow>("SELECT * FROM reminders WHERE sale_local_id=? ORDER BY at DESC, id DESC", [saleLocalId]);
+export const allReminders = (db: Db): Promise<ReminderRow[]> => db.all<ReminderRow>("SELECT * FROM reminders ORDER BY at DESC, id DESC LIMIT 2000");
 
 export interface ServerBalance { party_id: string; name: string; phone: string; total: string; current_amt: string; d30: string; d60: string; d90: string; d90plus: string; last_reminder_at: number | null; reminder_count: number }
 export const serverBalances = (db: Db): Promise<ServerBalance[]> => db.all<ServerBalance>("SELECT * FROM server_balances ORDER BY CAST(total AS REAL) DESC");

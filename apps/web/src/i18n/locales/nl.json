@@ -149,7 +149,38 @@
     "colKind": "Soort",
     "pricesIncludeTax": "Prijzen inclusief belasting",
     "pricesIncludeTaxHelp": "De prijzen zijn wat de klant betaalt; de belasting wordt uit elke prijs gehaald in plaats van erbij opgeteld.",
-    "categoryRequired": "Kies een belastingcategorie voor dit product."
+    "categoryRequired": "Kies een belastingcategorie voor dit product.",
+    "filing": {
+      "title": "Aangiftekalender",
+      "help": "Wanneer de periodieke belastingaangiften van het land van dit bedrijf normaal gesproken moeten worden ingediend, de eerstvolgende eerst. Alleen aangiften die nu kunnen worden ingediend of binnen vier maanden vervallen, worden getoond.",
+      "none": "Er vervalt geen aangifte in de komende vier maanden.",
+      "colReturn": "Aangifte",
+      "colPeriod": "Periode",
+      "colDue": "Uiterlijk",
+      "colStatus": "Status",
+      "periodQuarter": "K{{n}} {{year}}",
+      "periodMonth": "{{month}} {{year}}",
+      "periodYear": "Jaar {{year}}",
+      "dueToday": "Vandaag uiterlijk",
+      "openDays_one": "Kan worden ingediend, uiterlijk over {{count}} dag",
+      "openDays_other": "Kan worden ingediend, uiterlijk over {{count}} dagen",
+      "opensLater_one": "Opent op {{date}}, uiterlijk over {{count}} dag",
+      "opensLater_other": "Opent op {{date}}, uiterlijk over {{count}} dagen",
+      "disclaimer": "Een herinnering, geen indiening: Rechvix dient geen aangiften in en weet niet of er een is ingediend. Dit zijn de gebruikelijke nationale termijnen. Regionale regelingen, kwartaalregelingen voor kleine indieners, uitstel en feestdagen kunnen ze verschuiven. Bevestig ze bij uw belastingdienst of boekhouder.",
+      "form": {
+        "es303": "Btw-aangifte (IVA)",
+        "es130": "Voorschot inkomstenbelasting, zelfstandigen",
+        "es111": "Inhoudingen op werknemers en professionals",
+        "es115": "Inhoudingen op huur",
+        "es349": "Intracommunautaire handelingen (kwartaalindieners)",
+        "es390": "Jaarlijks btw-overzicht",
+        "es190": "Jaaroverzicht van inhoudingen (werknemers en professionals)",
+        "es180": "Jaaroverzicht van huurinhoudingen",
+        "es347": "Jaarlijkse handelingen met derden",
+        "ingstr1": "Uitgaande leveringen, maandelijkse indieners",
+        "ingstr3b": "Samenvattende aangifte en belastingbetaling, maandelijkse indieners"
+      }
+    }
   },
   "region": {
     "heading": "Taal en regio",

@@ -149,7 +149,38 @@
     "colKind": "Art",
     "pricesIncludeTax": "Preise inklusive Steuer",
     "pricesIncludeTaxHelp": "Die Preise sind das, was der Kunde zahlt; die Steuer wird aus jedem Preis herausgerechnet statt aufgeschlagen.",
-    "categoryRequired": "Wählen Sie eine Steuerkategorie für dieses Produkt."
+    "categoryRequired": "Wählen Sie eine Steuerkategorie für dieses Produkt.",
+    "filing": {
+      "title": "Fristenkalender",
+      "help": "Wann die regelmäßigen Steuererklärungen für das Land dieses Unternehmens normalerweise fällig sind, die nächste zuerst. Aufgeführt sind nur Erklärungen, die jetzt abgegeben werden können oder in den nächsten vier Monaten fällig werden.",
+      "none": "In den nächsten vier Monaten ist keine Erklärung fällig.",
+      "colReturn": "Erklärung",
+      "colPeriod": "Zeitraum",
+      "colDue": "Fällig bis",
+      "colStatus": "Status",
+      "periodQuarter": "Q{{n}} {{year}}",
+      "periodMonth": "{{month}} {{year}}",
+      "periodYear": "Jahr {{year}}",
+      "dueToday": "Heute fällig",
+      "openDays_one": "Abgabe möglich, fällig in {{count}} Tag",
+      "openDays_other": "Abgabe möglich, fällig in {{count}} Tagen",
+      "opensLater_one": "Ab {{date}}, fällig in {{count}} Tag",
+      "opensLater_other": "Ab {{date}}, fällig in {{count}} Tagen",
+      "disclaimer": "Eine Erinnerung, keine Einreichung: Rechvix reicht keine Erklärungen ein und weiß nicht, ob eine abgegeben wurde. Es sind die üblichen nationalen Fristen. Regionale Regelungen, Quartalsverfahren für kleine Unternehmen, Fristverlängerungen und Feiertage können sie verschieben. Bitte bestätigen Sie sie bei Ihrer Steuerbehörde oder Ihrem Steuerberater.",
+      "form": {
+        "es303": "Umsatzsteuererklärung (IVA)",
+        "es130": "Einkommensteuer-Vorauszahlung, Selbstständige",
+        "es111": "Quellensteuer auf Löhne und Honorare",
+        "es115": "Quellensteuer auf Mieten",
+        "es349": "Innergemeinschaftliche Umsätze (Quartalszahler)",
+        "es390": "Jährliche Umsatzsteuerzusammenfassung",
+        "es190": "Jahreszusammenfassung der Quellensteuern (Löhne und Honorare)",
+        "es180": "Jahreszusammenfassung der Mietquellensteuern",
+        "es347": "Jährliche Geschäfte mit Dritten",
+        "ingstr1": "Ausgangsumsätze, monatliche Einreicher",
+        "ingstr3b": "Zusammenfassende Erklärung und Steuerzahlung, monatliche Einreicher"
+      }
+    }
   },
   "region": {
     "heading": "Sprache und Region",

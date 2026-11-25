@@ -149,7 +149,38 @@
     "colKind": "Tipo",
     "pricesIncludeTax": "Preços com impostos incluídos",
     "pricesIncludeTaxHelp": "Os preços são o que o cliente paga; o imposto é retirado de cada preço em vez de somado.",
-    "categoryRequired": "Escolha uma categoria de imposto para este produto."
+    "categoryRequired": "Escolha uma categoria de imposto para este produto.",
+    "filing": {
+      "title": "Calendário de entregas",
+      "help": "Quando vencem normalmente as declarações fiscais periódicas do país desta empresa, a mais próxima primeiro. Só aparecem as que já podem ser entregues ou vencem nos próximos quatro meses.",
+      "none": "Nenhuma declaração vence nos próximos quatro meses.",
+      "colReturn": "Declaração",
+      "colPeriod": "Período",
+      "colDue": "Prazo",
+      "colStatus": "Estado",
+      "periodQuarter": "T{{n}} {{year}}",
+      "periodMonth": "{{month}} {{year}}",
+      "periodYear": "Ano {{year}}",
+      "dueToday": "Vence hoje",
+      "openDays_one": "Pode ser entregue, vence em {{count}} dia",
+      "openDays_other": "Pode ser entregue, vence em {{count}} dias",
+      "opensLater_one": "Abre em {{date}}, vence em {{count}} dia",
+      "opensLater_other": "Abre em {{date}}, vence em {{count}} dias",
+      "disclaimer": "Um lembrete, não uma entrega: o Rechvix não submete declarações e não sabe se alguma foi entregue. São os prazos nacionais habituais. Regimes regionais, regimes trimestrais para pequenos contribuintes, prorrogações e feriados podem alterá-los; confirme com a sua autoridade fiscal ou contabilista.",
+      "form": {
+        "es303": "Declaração de IVA",
+        "es130": "Pagamento por conta do IRS, trabalhadores independentes",
+        "es111": "Retenções sobre trabalhadores e profissionais",
+        "es115": "Retenções sobre rendas",
+        "es349": "Operações intracomunitárias (entrega trimestral)",
+        "es390": "Resumo anual de IVA",
+        "es190": "Resumo anual de retenções (trabalhadores e profissionais)",
+        "es180": "Resumo anual de retenções sobre rendas",
+        "es347": "Operações anuais com terceiros",
+        "ingstr1": "Vendas emitidas, entrega mensal",
+        "ingstr3b": "Declaração resumo e pagamento do imposto, entrega mensal"
+      }
+    }
   },
   "region": {
     "heading": "Idioma e região",

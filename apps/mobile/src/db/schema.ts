@@ -131,6 +131,16 @@ const MIGRATIONS: string[] = [
   `
   CREATE TABLE item_low (sku TEXT PRIMARY KEY, low_at TEXT NOT NULL);
   `,
+  // v6: reminders learn which invoice they were about, what was handed off and how far it got. Purely additive with defaults, so every earlier
+  // reminder keeps its meaning (an old row only ever meant "was opened for sharing", which is exactly status 'share_opened').
+  `
+  ALTER TABLE reminders ADD COLUMN sale_local_id TEXT;
+  ALTER TABLE reminders ADD COLUMN status TEXT NOT NULL DEFAULT 'share_opened';
+  ALTER TABLE reminders ADD COLUMN with_pdf INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE reminders ADD COLUMN outstanding TEXT;
+  ALTER TABLE reminders ADD COLUMN message TEXT NOT NULL DEFAULT '';
+  CREATE INDEX reminders_sale ON reminders(sale_local_id, at);
+  `,
 ];
 
 export async function migrate(db: Db): Promise<void> {

@@ -1,30 +1,29 @@
 import React, { useState } from "react";
-import { Linking, Modal, ScrollView, Share, TextInput, View } from "react-native";
+import { Modal, ScrollView, Share, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  addReminder, allCreditNotes, allPayments, getParty, insertPayments, listSales, remindersFor, reversePayment, serverBalances,
-  type CreditNote, type Party, type Payment,
+  allReminders, getParty, insertPayments, remindersFor, reversePayment, serverBalances,
+  type Party, type Payment, type ReminderRow,
 } from "../db/repo";
 import { minorToString, parseMinor, toMinor, dec } from "../lib/decimal";
 import { nowMs, useLocal, useNow } from "../lib/hooks";
-import { allocatePayment, ageBucket, daysOverdue, dueOf, dueState, reminderText } from "../lib/ledger";
+import { allocatePayment, ageBucket, daysOverdue, dueOf, dueState } from "../lib/ledger";
+import { BUCKETS, agingOf, bucketPercent } from "../lib/reminder";
+import { shareStatement } from "../lib/share";
+import { statementPayments } from "../lib/statement";
 import { formatMinor } from "../lib/money";
-import { buildLedgers, owing, type CustomerLedger } from "../lib/receivables";
-import { creditsBySale, livePayments } from "../lib/sale";
+import { owing, type CustomerLedger } from "../lib/receivables";
+import { livePayments } from "../lib/sale";
 import { uid, useApp } from "../state/app";
+import { useLedgers } from "../state/ledgers";
 import { fonts, radius, space, usePalette } from "../theme";
 import { Badge, Button, Card, Chip, Divider, Empty, Field, Header, Icon, Label, Screen, Tap } from "../ui/kit";
+import { ReminderComposer, lastReminderText } from "./Reminder";
 import { T } from "../ui/text";
 
 const METHODS = [{ k: "CASH", t: "Cash" }, { k: "UPI", t: "UPI" }, { k: "CARD", t: "Card" }, { k: "BANK_TRANSFER", t: "Bank" }];
 
-export function useLedgers(): CustomerLedger[] {
-  const sales = useLocal((db) => listSales(db, 5000), []);
-  const pays = useLocal((db) => allPayments(db), [] as Payment[]);
-  const credits = useLocal((db) => allCreditNotes(db), [] as CreditNote[]);
-  const now = useNow();
-  return buildLedgers(sales.filter((s) => !s.cancelled), pays, now, creditsBySale(credits));
-}
+export { useLedgers };
 
 type DueFilter = "due" | "overdue" | "settled" | "all";
 
@@ -43,6 +42,12 @@ export function Dues({ open }: { open: (partyId: string) => void }) {
   const total = owes.reduce((n, l) => n + l.balance.owedMinor, 0n);
   const overdue = owes.reduce((n, l) => n + l.balance.overdueMinor, 0n);
   const server = useLocal((db) => serverBalances(db), []);
+  const reminders = useLocal((db) => allReminders(db), [] as ReminderRow[]);
+  const lastBy = new Map<string, ReminderRow[]>();
+  for (const r of reminders) lastBy.set(r.party_id, [...(lastBy.get(r.party_id) ?? []), r]);
+  const now = useNow();
+  const aging = agingOf(ledgers.flatMap((l) => l.invoices), now);
+  const ageTone: Record<string, string> = { current: c.info, "1-30": c.warning, "31-60": c.warning, "61-90": c.negative, "90+": c.negative };
   const serverTotal = server.reduce((n, b) => n + parseMinor(b.total), 0n);
   const needle = q.trim().toLowerCase();
   const list = ledgers
@@ -59,6 +64,23 @@ export function Dues({ open }: { open: (partyId: string) => void }) {
           <T v="small" muted>{owes.length} customer{owes.length === 1 ? "" : "s"}{overdue > 0n ? ` · ${m(overdue)} is past its due date` : ""}</T>
           <T v="small" muted>From invoices made on this phone.{linked && serverTotal > 0n ? ` Across the whole business, the server shows ${m(serverTotal)} outstanding.` : ""}</T>
         </View>
+        {aging.totalMinor > 0n ? (
+          <Card style={{ gap: 10 }}>
+            <T v="label" muted>Who is late, by age</T>
+            <View style={{ flexDirection: "row", height: 10, borderRadius: 5, overflow: "hidden", backgroundColor: c.surfaceAlt }} accessible accessibilityLabel={`Receivables by age: ${BUCKETS.map((b) => `${b.label} ${m(aging.totals[b.key])}`).join(", ")}`}>
+              {BUCKETS.map((b) => { const w = bucketPercent(aging.totals[b.key], aging.totalMinor); return w > 0 ? <View key={b.key} style={{ width: `${w}%`, backgroundColor: ageTone[b.key] }} /> : null; })}
+            </View>
+            <View style={{ gap: 6 }}>
+              {BUCKETS.filter((b) => aging.totals[b.key] > 0n).map((b) => (
+                <View key={b.key} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ageTone[b.key] }} />
+                  <T v="small" style={{ flex: 1 }}>{b.label}</T>
+                  <T v="money" style={{ fontSize: 14 }}>{m(aging.totals[b.key])}</T>
+                </View>
+              ))}
+            </View>
+          </Card>
+        ) : null}
         <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.surface, borderRadius: radius.md + 2, borderWidth: 1, borderColor: c.border, paddingLeft: 14 }}>
           <Icon name="search" size={18} color={c.faint} />
           <TextInput accessibilityLabel="Search customers" value={q} onChangeText={setQ} placeholder="Name or phone" placeholderTextColor={c.faint} style={{ flex: 1, minHeight: 48, paddingHorizontal: 10, fontSize: 16, color: c.text, fontFamily: fonts.body }} />
@@ -83,6 +105,7 @@ export function Dues({ open }: { open: (partyId: string) => void }) {
                     <View style={{ flex: 1 }}>
                       <T v="strong" numberOfLines={1}>{l.name}</T>
                       <T v="small" muted numberOfLines={1}>{phone ? `${phone} · ` : ""}last bill {new Date(l.lastBilledAt).toLocaleDateString()}</T>
+                      {l.balance.owedMinor > 0n && lastReminderText(lastBy.get(l.partyId) ?? [], now) ? <T v="small" color={c.info} numberOfLines={1}>{lastReminderText(lastBy.get(l.partyId) ?? [], now)}</T> : null}
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 4 }}>
                       <T v="money" style={{ fontFamily: fonts.monoBold }}>{m(l.balance.owedMinor)}</T>
@@ -102,12 +125,15 @@ export function Dues({ open }: { open: (partyId: string) => void }) {
 
 /** One customer's account: invoices, payments, and the two things you do here, record a payment and send a reminder. */
 export function CustomerLedgerScreen({ partyId, onBack, openSale }: { partyId: string; onBack: () => void; openSale: (id: string) => void }) {
-  const { currency, businessName, changed, db, linked } = useApp();
+  const { currency, changed, db, linked, profile, businessName } = useApp();
   const c = usePalette();
   const ledger = useLedgers().find((l) => l.partyId === partyId);
   const party = useLocal((d) => getParty(d, partyId), null as Party | null, [partyId]);
   const pays = useLocal((d) => d.all<Payment>("SELECT * FROM payments WHERE party_id=? ORDER BY paid_at DESC, created_at DESC", [partyId]), [] as Payment[], [partyId]);
-  const reminders = useLocal((d) => remindersFor(d, partyId), [] as { at: number; channel: string }[], [partyId]);
+  const reminders = useLocal((d) => remindersFor(d, partyId), [] as ReminderRow[], [partyId]);
+  const [reminding, setReminding] = useState<{ invoiceId?: string } | null>(null);
+  const [stmt, setStmt] = useState(false);
+  const [stmtMsg, setStmtMsg] = useState<string | null>(null);
   const [paying, setPaying] = useState<{ invoiceId?: string } | null>(null);
   const [reversing, setReversing] = useState<Payment | null>(null);
   const m = (x: bigint) => formatMinor(x, currency);
@@ -117,22 +143,13 @@ export function CustomerLedgerScreen({ partyId, onBack, openSale }: { partyId: s
   const open = ledger.invoices.filter((i) => dueOf(i) > 0n).sort((a, z) => a.issuedAt - z.issuedAt);
   const settled = ledger.invoices.filter((i) => dueOf(i) === 0n && !i.cancelled).sort((a, z) => z.issuedAt - a.issuedAt);
 
-  async function remind(channel: "whatsapp" | "share") {
-    const text = reminderText({
-      customer: ledger!.name, business: businessName, owedText: m(b.owedMinor), invoiceNumbers: open.map((i) => i.number),
-      dueText: b.overdueMinor > 0n ? `${m(b.overdueMinor)} is past its due date` : undefined,
-    });
-    if (!db) return;
-    if (channel === "whatsapp" && party?.phone) {
-      const digits = party.phone.replace(/\D/g, "");
-      const to = digits.length === 10 ? `91${digits}` : digits;
-      try { await Linking.openURL(`whatsapp://send?phone=${to}&text=${encodeURIComponent(text)}`); } catch { await Linking.openURL(`https://wa.me/${to}?text=${encodeURIComponent(text)}`); }
-      await addReminder(db, partyId, nowMs(), "whatsapp");
-    } else {
-      const r = await Share.share({ message: text });
-      if (r.action === Share.sharedAction) await addReminder(db, partyId, nowMs(), "share");
-    }
-    changed();
+  async function statement() {
+    if (!db || !profile || stmt) return;
+    setStmt(true); setStmtMsg(null);
+    try {
+      const opened = await shareStatement({ business: profile, customer: ledger!.name, phone: party?.phone, currency, invoices: ledger!.invoices, payments: statementPayments(ledger!.invoices, pays.filter((p) => p.party_id === partyId)), now: nowMs() });
+      setStmtMsg(opened ? "The statement PDF was opened for sharing." : "This phone has no share sheet, so the statement could not be shared.");
+    } catch { setStmtMsg("Couldn't create the statement PDF. Try again."); } finally { setStmt(false); }
   }
 
   return (
@@ -150,13 +167,12 @@ export function CustomerLedgerScreen({ partyId, onBack, openSale }: { partyId: s
           {b.owedMinor > 0n ? (
             <View style={{ gap: 10 }}>
               <Button title="Record payment" icon="cash-outline" onPress={() => setPaying({})} />
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                {party?.phone ? <Button style={{ flex: 1 }} kind="quiet" title="WhatsApp" icon="logo-whatsapp" onPress={() => void remind("whatsapp")} /> : null}
-                <Button style={{ flex: 1 }} kind="quiet" title="Share reminder" icon="share-outline" onPress={() => void remind("share")} />
-              </View>
-              <T v="small" muted>{reminders[0] ? `Last reminder opened ${new Date(reminders[0].at).toLocaleDateString()} (${reminders.length} so far). Rechvix can't tell whether it was delivered or read.` : "Reminders open WhatsApp or the share sheet with the message ready. Rechvix can't tell whether it was delivered or read."}</T>
+              <Button title="Send payment reminder" icon="notifications-outline" kind="quiet" onPress={() => setReminding({})} />
+              <T v="small" muted>{lastReminderText(reminders, now) ? `${lastReminderText(reminders, now)} (${reminders.length} so far). ` : ""}Opening a reminder sends nothing: you review the message first. Rechvix cannot tell whether a message was delivered or read.</T>
             </View>
           ) : <Button title="Record an advance payment" kind="quiet" icon="cash-outline" onPress={() => setPaying({})} />}
+          <Button title="Share account statement (PDF)" icon="document-text-outline" kind="quiet" onPress={() => void statement()} busy={stmt} />
+          {stmtMsg ? <T v="small" muted>{stmtMsg}</T> : null}
 
           {open.length > 0 ? (
             <View style={{ gap: 8 }}>
@@ -173,7 +189,10 @@ export function CustomerLedgerScreen({ partyId, onBack, openSale }: { partyId: s
                           {od > 0 ? <T v="small" color={c.negative}>{od} day{od === 1 ? "" : "s"} overdue ({ageBucket(i.dueAt, now)})</T> : i.dueAt ? <T v="small" muted>Due {new Date(i.dueAt).toLocaleDateString()}</T> : null}
                         </View>
                         <T v="money" style={{ fontFamily: fonts.monoBold }}>{m(dueOf(i))}</T>
-                        <Tap label={`Pay ${i.number}`} onPress={() => setPaying({ invoiceId: i.id })} style={{ minHeight: 40, paddingHorizontal: 12, borderRadius: 20, backgroundColor: c.accentSoft, justifyContent: "center" }}><T v="small" color={c.accent} style={{ fontFamily: fonts.bodySemi }}>Pay</T></Tap>
+                        <View style={{ gap: 6 }}>
+                          <Tap label={`Pay ${i.number}`} onPress={() => setPaying({ invoiceId: i.id })} style={{ minHeight: 40, paddingHorizontal: 12, borderRadius: 20, backgroundColor: c.accentSoft, justifyContent: "center", alignItems: "center" }}><T v="small" color={c.accent} style={{ fontFamily: fonts.bodySemi }}>Pay</T></Tap>
+                          <Tap label={`Remind about ${i.number}`} onPress={() => setReminding({ invoiceId: i.id })} style={{ minHeight: 40, paddingHorizontal: 12, borderRadius: 20, backgroundColor: c.surfaceAlt, justifyContent: "center", alignItems: "center" }}><T v="small" style={{ fontFamily: fonts.bodySemi }}>Remind</T></Tap>
+                        </View>
                       </Tap>
                       {k < open.length - 1 ? <Divider /> : null}
                     </View>
@@ -229,6 +248,7 @@ export function CustomerLedgerScreen({ partyId, onBack, openSale }: { partyId: s
           ) : null}
         </View>
       </ScrollView>
+      {reminding ? <ReminderComposer partyId={partyId} invoiceId={reminding.invoiceId} onClose={() => setReminding(null)} /> : null}
       {paying ? <PaymentSheet ledger={ledger} invoiceId={paying.invoiceId} onClose={() => setPaying(null)} onSaved={() => { setPaying(null); changed(); }} /> : null}
       {reversing ? <ReverseSheet payment={reversing} onClose={() => setReversing(null)} onDone={() => { setReversing(null); changed(); }} /> : null}
     </Screen>

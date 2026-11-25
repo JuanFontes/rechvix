@@ -149,7 +149,38 @@
     "colKind": "Tipo",
     "pricesIncludeTax": "Prezzi IVA inclusa",
     "pricesIncludeTaxHelp": "I prezzi sono quelli pagati dal cliente; l'imposta viene scorporata da ogni prezzo invece di essere aggiunta.",
-    "categoryRequired": "Scegli una categoria fiscale per questo prodotto."
+    "categoryRequired": "Scegli una categoria fiscale per questo prodotto.",
+    "filing": {
+      "title": "Calendario delle scadenze",
+      "help": "Quando scadono normalmente le dichiarazioni fiscali periodiche del paese di questa società, la più vicina per prima. Sono elencate solo quelle presentabili ora o in scadenza nei prossimi quattro mesi.",
+      "none": "Nessuna dichiarazione scade nei prossimi quattro mesi.",
+      "colReturn": "Dichiarazione",
+      "colPeriod": "Periodo",
+      "colDue": "Scadenza",
+      "colStatus": "Stato",
+      "periodQuarter": "T{{n}} {{year}}",
+      "periodMonth": "{{month}} {{year}}",
+      "periodYear": "Anno {{year}}",
+      "dueToday": "Scade oggi",
+      "openDays_one": "Presentabile, scade tra {{count}} giorno",
+      "openDays_other": "Presentabile, scade tra {{count}} giorni",
+      "opensLater_one": "Apre il {{date}}, scade tra {{count}} giorno",
+      "opensLater_other": "Apre il {{date}}, scade tra {{count}} giorni",
+      "disclaimer": "Un promemoria, non una presentazione: Rechvix non invia dichiarazioni e non sa se una sia stata presentata. Sono le scadenze nazionali abituali. Regimi regionali, schemi trimestrali per i piccoli contribuenti, proroghe e festività possono spostarle: confermale con la tua autorità fiscale o il tuo commercialista.",
+      "form": {
+        "es303": "Dichiarazione IVA",
+        "es130": "Acconto sull'imposta sul reddito, lavoratori autonomi",
+        "es111": "Ritenute su dipendenti e professionisti",
+        "es115": "Ritenute sugli affitti",
+        "es349": "Operazioni intracomunitarie (dichiaranti trimestrali)",
+        "es390": "Riepilogo annuale IVA",
+        "es190": "Riepilogo annuale delle ritenute (dipendenti e professionisti)",
+        "es180": "Riepilogo annuale delle ritenute sugli affitti",
+        "es347": "Operazioni annuali con terzi",
+        "ingstr1": "Cessioni in uscita, dichiaranti mensili",
+        "ingstr3b": "Dichiarazione riepilogativa e pagamento dell'imposta, dichiaranti mensili"
+      }
+    }
   },
   "region": {
     "heading": "Lingua e area geografica",

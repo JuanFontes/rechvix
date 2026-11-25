@@ -149,7 +149,38 @@
     "colKind": "Type",
     "pricesIncludeTax": "Prices include tax",
     "pricesIncludeTaxHelp": "Prices are what the customer pays; the tax is taken out of each price instead of added on top.",
-    "categoryRequired": "Choose a tax category for this product."
+    "categoryRequired": "Choose a tax category for this product.",
+    "filing": {
+      "title": "Filing calendar",
+      "help": "When the periodic tax returns for this company's country normally fall due, soonest first. Only returns open now or due within four months are listed.",
+      "none": "No returns fall due in the next four months.",
+      "colReturn": "Return",
+      "colPeriod": "Period",
+      "colDue": "Due by",
+      "colStatus": "Status",
+      "periodQuarter": "Q{{n}} {{year}}",
+      "periodMonth": "{{month}} {{year}}",
+      "periodYear": "Year {{year}}",
+      "dueToday": "Due today",
+      "openDays_one": "Open to file, due in {{count}} day",
+      "openDays_other": "Open to file, due in {{count}} days",
+      "opensLater_one": "Opens {{date}}, due in {{count}} day",
+      "opensLater_other": "Opens {{date}}, due in {{count}} days",
+      "disclaimer": "A reminder, not a filing: Rechvix does not submit returns and cannot tell whether one has been filed. These are the standard national deadlines. Regional regimes, quarterly schemes for small filers, extensions and holidays can move them, so confirm with your tax authority or accountant.",
+      "form": {
+        "es303": "VAT (IVA) return",
+        "es130": "Income tax instalment, self-employed",
+        "es111": "Withholding on employees and professionals",
+        "es115": "Withholding on rent",
+        "es349": "EU intra-community operations (quarterly filers)",
+        "es390": "Annual VAT summary",
+        "es190": "Annual summary of withholdings (employees and professionals)",
+        "es180": "Annual summary of rent withholdings",
+        "es347": "Annual operations with third parties",
+        "ingstr1": "Outward supplies, monthly filers",
+        "ingstr3b": "Summary return and tax payment, monthly filers"
+      }
+    }
   },
   "region": {
     "heading": "Language and region",

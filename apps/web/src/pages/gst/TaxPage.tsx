@@ -1,4 +1,5 @@
 import { AccountantExportPanel } from "../../components/AccountantExportPanel";
+import { FilingCalendarPanel } from "../../components/FilingCalendarPanel";
 import { VerifactuPanel } from "../../components/VerifactuPanel";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -37,6 +38,7 @@ export function TaxPage({ legalEntity }: { legalEntity: LegalEntity }) {
         </Link>
       </div>
 
+      <FilingCalendarPanel country={legalEntity.CountryCode} />
       <AccountantExportPanel key={legalEntity.ID} company={legalEntity} />
       {legalEntity.CountryCode === "ES" ? <VerifactuPanel key={`vf-${legalEntity.ID}`} company={legalEntity} /> : null}
 

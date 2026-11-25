@@ -6,6 +6,7 @@ import { creditNotesForSale, getCreditNote, getOrg, getParty, getQuote, getSale,
 import type { Db } from "../db/types";
 import { invoiceHtml, invoiceTitle, paperFor, paymentSummary, type InvoiceData, type InvoiceTemplate } from "./invoice";
 import { parseMinor } from "./decimal";
+import { statementHtml, type StatementInput } from "./statement";
 import { creditsBySale, livePayments, payloadCalc, salePaidMinor, saleTotalMinor } from "./sale";
 
 /** Everything an invoice needs, drawn from the stored sale (never recomputed), so a shared PDF matches what was issued. */
@@ -77,15 +78,36 @@ export async function shareSale(db: Db, localId: string, business: Profile, curr
   if (d) await shareInvoice(d, template ?? business.invoiceTemplate);
 }
 
-/** Renders the invoice to a PDF and opens the system share sheet (WhatsApp, email, print, save...). */
-export async function shareInvoice(d: InvoiceData, template: InvoiceTemplate = "classic"): Promise<void> {
-  const { uri } = await Print.printToFileAsync({ html: invoiceHtml(d, template), ...paperFor(d.kind === "delivery" ? "classic" : template) });
-  // Name the file after the invoice, so the customer receives "Invoice-INV-0001.pdf" rather than a random id.
-  const word = d.kind === "quotation" ? "Quotation" : d.kind === "credit" ? "CreditNote" : d.kind === "delivery" ? "DeliveryNote" : invoiceTitle({ ...d.business, gstRegistered: d.gstRegistered }) === "BILL OF SUPPLY" ? "BillOfSupply" : "Invoice";
-  const named = new File(Paths.cache, `${word}-${d.number.replace(/[^A-Za-z0-9._-]+/g, "-")}.pdf`);
+const docWord = (d: InvoiceData) => (d.kind === "quotation" ? "Quotation" : d.kind === "credit" ? "CreditNote" : d.kind === "delivery" ? "DeliveryNote" : invoiceTitle({ ...d.business, gstRegistered: d.gstRegistered }) === "BILL OF SUPPLY" ? "BillOfSupply" : "Invoice");
+const safeName = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "document";
+
+/** Renders HTML to a PDF named for the document (so the customer receives "Invoice-INV-0001.pdf", not a random id) and opens the system
+ *  share sheet. Returns false when this device has no share sheet (nothing was shared). Throws if the PDF itself could not be made.
+ *  The share sheet reports nothing back, so true means "opened", never "sent". */
+export async function sharePdfHtml(html: string, paper: { width?: number; height?: number }, fileName: string, dialogTitle: string): Promise<boolean> {
+  const { uri } = await Print.printToFileAsync({ html, ...paper });
+  const named = new File(Paths.cache, fileName);
   if (named.exists) named.delete();
   new File(uri).copy(named);
-  if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(named.uri, { mimeType: "application/pdf", UTI: ".pdf", dialogTitle: `${d.kind === "quotation" ? "Quotation" : d.kind === "credit" ? "Credit note" : d.kind === "delivery" ? "Delivery note" : "Invoice"} ${d.number}` });
+  if (!(await Sharing.isAvailableAsync())) return false;
+  await Sharing.shareAsync(named.uri, { mimeType: "application/pdf", UTI: ".pdf", dialogTitle });
+  return true;
+}
+
+/** Renders the invoice to a PDF and opens the system share sheet (WhatsApp, email, print, save...). */
+export async function shareInvoice(d: InvoiceData, template: InvoiceTemplate = "classic"): Promise<boolean> {
+  const kindWord = d.kind === "quotation" ? "Quotation" : d.kind === "credit" ? "Credit note" : d.kind === "delivery" ? "Delivery note" : "Invoice";
+  return sharePdfHtml(invoiceHtml(d, template), paperFor(d.kind === "delivery" ? "classic" : template), `${docWord(d)}-${safeName(d.number)}.pdf`, `${kindWord} ${d.number}`);
+}
+
+/** The system print preview of the invoice exactly as it would be shared: the user can check it, then print or save it as a PDF from there. */
+export async function previewInvoice(d: InvoiceData, template: InvoiceTemplate = "classic"): Promise<void> {
+  await Print.printAsync({ html: invoiceHtml(d, template), ...paperFor(template) });
+}
+
+/** The customer's account statement as a PDF, through the share sheet. Sharing it changes no record. */
+export async function shareStatement(input: StatementInput): Promise<boolean> {
+  return sharePdfHtml(statementHtml(input), paperFor("classic"), `Statement-${safeName(input.customer)}.pdf`, `Statement for ${input.customer}`);
 }
 
 /** Everything on the phone as one JSON file (every record, payments included). For a standalone phone this is the safety net; linking a server is the better one. */

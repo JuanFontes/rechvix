@@ -57,6 +57,14 @@ The phone's own invoice numbers are replaced by the server's when each sale sync
 - **Keyboard.** The total / Save bar on New sale lifts above the on-screen keyboard (measured, so it works with or without Android resizing the window).
 
 
+## Reminders, statements and PDFs (2.4)
+
+- **Send payment reminder** is on an invoice, on a customer's account (all unpaid invoices) and beside each open invoice. The composer shows the live outstanding amount, due date and days overdue, and an editable message. Opening it sends nothing.
+- Hand-off buttons: **Open WhatsApp with this message** (needs a saved phone number), **Share message as text**, **Share invoice PDF** (a **statement PDF** when the reminder covers several invoices). WhatsApp and most apps take a message or a file, not reliably both, so message and PDF are two taps to the same chat.
+- **History** (per invoice and per customer) shows the channel, date, outstanding amount and whether a PDF was handed off, with the status "Share opened", "Cancelled" or "Marked as sent by you". Rechvix cannot see delivery or read receipts and never claims them. It is stored on the phone (reminders table, DB v6), is included in backups and is not uploaded; the server's own automatic email reminders are separate.
+- **Preview PDF** on an invoice opens the system print preview of exactly what would be shared. **Share account statement (PDF)** on a customer lists invoices and payments with a running balance and an ageing line. **To collect** shows receivables by age.
+- Limits: the share sheet and WhatsApp report nothing back about delivery; PDF preview and sharing need a real device or emulator; statements are generated on the phone from its own records (invoices made on other devices appear after a sync).
+
 ## How sync works
 
 - **Connect once** to your self-hosted server (address is checked against `/health/ready`), then sign in. The session
