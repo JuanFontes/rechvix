@@ -90,10 +90,6 @@ func monthEnd(d time.Time) time.Time {
 	return time.Date(d.Year(), d.Month()+1, 0, 0, 0, 0, 0, time.UTC)
 }
 
-func dateOnly(d time.Time) time.Time {
-	return time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC)
-}
-
 // monthDepreciation is the charge for one month, given the book value at the start of that month's depreciation. monthsDone counts the
 // months already depreciated. The charge never takes the asset below its residual value, and the last month of a straight-line asset takes
 // exactly what is left so rounding never leaves a few paise behind.
