@@ -32,7 +32,7 @@ OBSERVED = visible on a sheet; INFERRED = reasonable reading of a control; UNKNO
 | 5, 56 | Quotes / delivery notes and their numbering and templates | Quotations; delivery challans; numbering series | Kept |
 | 6, 19 | Exports (books of record, advanced export, accountant tools, catalogue) | Accountant export panel, tax packs, CSV | Kept |
 | 7, 15, 18, 66 | Import invoices, contacts, products | Import centre | Kept |
-| 8 | Quarter closing | Accounting period locks | Kept (verified present in `accounting`) |
+| 8 | Quarter closing | Accounting period locks | **Improved**: one-click "close last / this quarter" with a confirmation (reuses the existing create and lock endpoints) |
 | 9, 11, 12 | Received invoices register, expenses, OCR | Purchases, expenses, OCR | Kept |
 | 10 | Investment-goods register | none | **Deferred**: needs a depreciation design |
 | 13, 14 | Suppliers/customers lists | Contacts | Kept |

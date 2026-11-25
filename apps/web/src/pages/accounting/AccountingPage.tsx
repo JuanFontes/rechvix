@@ -6,6 +6,7 @@ import { ReceivablesPanel } from "../../components/ReceivablesPanel";
 import { ReportTable } from "../../components/ReportTable";
 import ui from "../../components/ui.module.css";
 import { api, ApiError } from "../../lib/api-client";
+import { periodFor, previousQuarter, quarterContaining, type Quarter } from "../../lib/quarters";
 import layout from "../DashboardPage.module.css";
 
 interface Account {
@@ -71,6 +72,20 @@ function FiscalPeriodsPanel() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["fiscal-periods"] }),
   });
 
+  // One click to close a quarter: reuse the period if it exists, create it if not, then lock it. Locking is never done without a second,
+  // explicit confirmation, because it stops anything being posted or backdated into those days until someone with the override permission unlocks it.
+  const [confirming, setConfirming] = useState<Quarter | null>(null);
+  const today = new Date();
+  const quarters = [previousQuarter(today.getFullYear(), today.getMonth() + 1), quarterContaining(today.getFullYear(), today.getMonth() + 1)];
+  const closeQuarter = useMutation({
+    mutationFn: async (q: Quarter) => {
+      const existing = periodFor(periods.data ?? [], q);
+      const id = existing?.ID ?? (await api.post<FiscalPeriod>("/accounting/fiscal-periods", { start_date: new Date(q.start).toISOString(), end_date: new Date(q.end).toISOString(), label: q.label })).ID;
+      if (!existing?.IsLocked) await api.post(`/accounting/fiscal-periods/${id}/lock`);
+    },
+    onSuccess: () => { setConfirming(null); void queryClient.invalidateQueries({ queryKey: ["fiscal-periods"] }); },
+  });
+
   return (
     <div className={layout.panel}>
       <div className={ui.toolbar}>
@@ -85,6 +100,29 @@ function FiscalPeriodsPanel() {
       <p className={layout.subtitle} style={{ marginBottom: 16 }}>
         Locking a period stops new entries from being posted or backdated into it — the usual month/year-end close.
       </p>
+
+      <div role="group" aria-label="Close a quarter" style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+        <strong>Close a quarter</strong>
+        {quarters.map((q, i) => {
+          const found = periodFor(periods.data ?? [], q);
+          const locked = !!found?.IsLocked;
+          return (
+            <div key={q.label} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ minWidth: 170 }}>{i === 0 ? "Last quarter" : "This quarter"}: {q.label}</span>
+              {locked ? <span className={ui.badge} data-tone="positive">Locked</span> : confirming?.label === q.label ? (
+                <>
+                  <span role="alert">{i === 1 ? "This quarter is not over yet, so nothing more can be posted into it. " : ""}Lock {q.label}? Entries cannot be posted or backdated into it until it is unlocked.</span>
+                  <button type="button" className={ui.btnPrimary} disabled={closeQuarter.isPending} onClick={() => closeQuarter.mutate(q)}>{closeQuarter.isPending ? "Locking…" : `Yes, lock ${q.label}`}</button>
+                  <button type="button" className={ui.btnGhost} onClick={() => setConfirming(null)}>Cancel</button>
+                </>
+              ) : (
+                <button type="button" className={ui.btnSecondary} disabled={periods.isLoading} onClick={() => { closeQuarter.reset(); setConfirming(q); }}>{found ? "Lock this quarter" : "Create and lock this quarter"}</button>
+              )}
+            </div>
+          );
+        })}
+        {closeQuarter.isError ? <p role="alert" style={{ color: "var(--color-negative)" }}>{closeQuarter.error instanceof ApiError ? closeQuarter.error.message : "Could not close the quarter."}</p> : null}
+      </div>
 
       {showForm ? (
         <form
