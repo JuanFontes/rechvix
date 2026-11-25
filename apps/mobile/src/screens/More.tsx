@@ -24,7 +24,7 @@ function Row({ icon, title, sub, onPress, tone }: { icon: IconName; title: strin
   );
 }
 
-export function More({ openCustomers, openProfile, openItems, openDesign, openQuotes }: { openCustomers: () => void; openProfile: () => void; openItems: () => void; openDesign: () => void; openQuotes: () => void }) {
+export function More({ openCustomers, openProfile, openItems, openDesign, openQuotes, openDayBook }: { openCustomers: () => void; openProfile: () => void; openItems: () => void; openDesign: () => void; openQuotes: () => void; openDayBook: () => void }) {
   const { changed, profile, saveProfile, linked, server, email, lastSyncAt, counts, syncNow, syncing, online, logout, disconnect, startLinking, db, businessName } = useApp();
   const c = usePalette();
   async function startRestore() {
@@ -59,6 +59,8 @@ export function More({ openCustomers, openProfile, openItems, openDesign, openQu
             <Row icon="people-outline" title="Customers" onPress={openCustomers} />
             <View style={{ height: 1, backgroundColor: c.border }} />
             <Row icon="cube-outline" title="Items & stock" onPress={openItems} />
+            <View style={{ height: 1, backgroundColor: c.border }} />
+            <Row icon="calendar-outline" title="Day book" sub="Invoices, money in and credit notes by period" onPress={openDayBook} />
             <View style={{ height: 1, backgroundColor: c.border }} />
             <Row icon="document-text-outline" title="Quotations" sub="Offers you have sent; not counted as sales" onPress={openQuotes} />
           </Card>

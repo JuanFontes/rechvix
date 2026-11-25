@@ -9,6 +9,7 @@ import { ActivityIndicator, BackHandler, Image, View, useColorScheme } from "rea
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Connect } from "./src/screens/Connect";
 import { CustomerEditor, Customers } from "./src/screens/Customers";
+import { DayBook } from "./src/screens/DayBook";
 import { Dues, CustomerLedgerScreen } from "./src/screens/Dues";
 import { Home } from "./src/screens/Home";
 import { ItemEditor, Items } from "./src/screens/Items";
@@ -53,6 +54,7 @@ function Shell() {
   const [itemsOpen, setItemsOpen] = useState(false);
   const [designOpen, setDesignOpen] = useState(false);
   const [quotesOpen, setQuotesOpen] = useState(false);
+  const [dayBookOpen, setDayBookOpen] = useState(false);
   const [quote, setQuote] = useState<string | null>(null);
   const [ledger, setLedger] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -64,6 +66,7 @@ function Shell() {
       if (itemEditor !== undefined) { setItemEditor(undefined); return true; }
       if (custEditor !== undefined) { setCustEditor(undefined); return true; }
       if (profileOpen) { setProfileOpen(false); return true; }
+      if (dayBookOpen) { setDayBookOpen(false); return true; }
       if (quote) { setQuote(null); return true; }
       if (quotesOpen) { setQuotesOpen(false); return true; }
       if (designOpen) { setDesignOpen(false); return true; }
@@ -75,17 +78,20 @@ function Shell() {
       return false;
     });
     return () => sub.remove();
-  }, [sale, customers, tab, profileOpen, itemEditor, custEditor, designOpen, itemsOpen, ledger, quotesOpen, quote]);
+  }, [sale, customers, tab, profileOpen, itemEditor, custEditor, designOpen, itemsOpen, ledger, quotesOpen, quote, dayBookOpen]);
 
   if (phase === "boot") return <Splash />;
   if (phase === "welcome") return <Welcome />;
   if (linking === "connect") return <Connect />;
   if (linking === "login" || (linked && sessionExpired)) return <Login />;
 
-  const go = (t: Tab | "items") => { setQuote(null); setQuotesOpen(false); setSale(null); setCustomers(false); setProfileOpen(false); setDesignOpen(false); setLedger(null); if (t === "items") { setItemsOpen(true); return; } setItemsOpen(false); setTab(t); };
+  const go = (t: Tab | "items") => { setQuote(null); setQuotesOpen(false); setDayBookOpen(false); setSale(null); setCustomers(false); setProfileOpen(false); setDesignOpen(false); setLedger(null); if (t === "items") { setItemsOpen(true); return; } setItemsOpen(false); setTab(t); };
   const openLedger = (id: string) => { setSale(null); setLedger(id); };
 
   const body = quote ? <QuoteDetail id={quote} onClose={() => setQuote(null)} goSell={() => { setQuote(null); setQuotesOpen(false); setTab("sell"); }} />
+    : sale && dayBookOpen ? <SaleDetail id={sale} onClose={() => setSale(null)} goSell={() => { setSale(null); setDayBookOpen(false); setTab("sell"); }} openCustomer={openLedger} />
+    : ledger && dayBookOpen ? <CustomerLedgerScreen partyId={ledger} onBack={() => setLedger(null)} openSale={(id) => { setLedger(null); setSale(id); }} />
+    : dayBookOpen ? <DayBook onBack={() => setDayBookOpen(false)} openSale={setSale} openCustomer={setLedger} />
     : quotesOpen ? <Quotes onBack={() => setQuotesOpen(false)} open={setQuote} />
     : profileOpen ? <ProfileEditor onClose={() => setProfileOpen(false)} />
     : designOpen ? <InvoiceDesign onClose={() => setDesignOpen(false)} />
@@ -97,7 +103,7 @@ function Shell() {
     : tab === "sell" ? <Sell onDone={(id) => { setTab("sales"); setSale(id); }} addItem={() => setItemEditor(null)} />
     : tab === "sales" ? <Sales open={setSale} />
     : tab === "dues" ? <Dues open={setLedger} />
-    : <More openCustomers={() => setCustomers(true)} openProfile={() => setProfileOpen(true)} openItems={() => setItemsOpen(true)} openDesign={() => setDesignOpen(true)} openQuotes={() => setQuotesOpen(true)} />;
+    : <More openCustomers={() => setCustomers(true)} openProfile={() => setProfileOpen(true)} openItems={() => setItemsOpen(true)} openDesign={() => setDesignOpen(true)} openQuotes={() => setQuotesOpen(true)} openDayBook={() => setDayBookOpen(true)} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -109,7 +115,7 @@ function Shell() {
 
       <View style={{ flexDirection: "row", backgroundColor: c.bar, paddingBottom: insets.bottom, alignItems: "flex-end" }} accessibilityRole="tablist">
         {TABS.map((t) => {
-          const on = tab === t.key && !sale && !customers && !profileOpen && !itemsOpen && !designOpen && !ledger && !quotesOpen && !quote;
+          const on = tab === t.key && !sale && !customers && !profileOpen && !itemsOpen && !designOpen && !ledger && !quotesOpen && !quote && !dayBookOpen;
           if (t.key === "sell") {
             return (
               <View key={t.key} style={{ flex: 1, alignItems: "center" }}>

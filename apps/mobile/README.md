@@ -63,6 +63,7 @@ The phone's own invoice numbers are replaced by the server's when each sale sync
 - Hand-off buttons: **Open WhatsApp with this message** (needs a saved phone number), **Share message as text**, **Share invoice PDF** (a **statement PDF** when the reminder covers several invoices). WhatsApp and most apps take a message or a file, not reliably both, so message and PDF are two taps to the same chat.
 - **History** (per invoice and per customer) shows the channel, date, outstanding amount and whether a PDF was handed off, with the status "Share opened", "Cancelled" or "Marked as sent by you". Rechvix cannot see delivery or read receipts and never claims them. It is stored on the phone (reminders table, DB v6), is included in backups and is not uploaded; the server's own automatic email reminders are separate.
 - **Preview PDF** on an invoice opens the system print preview of exactly what would be shared. **Share account statement (PDF)** on a customer lists invoices and payments with a running balance and an ageing line. **To collect** shows receivables by age.
+- **Day book** (More > Day book) lists invoices, money in and credit notes for a period (financial year starts in April for India, January elsewhere), with totals, search, a type filter and a PDF. It is read-only.
 - Limits: the share sheet and WhatsApp report nothing back about delivery; PDF preview and sharing need a real device or emulator; statements are generated on the phone from its own records (invoices made on other devices appear after a sync).
 
 ## How sync works
