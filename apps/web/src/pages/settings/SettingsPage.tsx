@@ -1,5 +1,6 @@
 import { setRetailMode, useRetailMode } from "../../lib/retailMode";
 import { ShopAdmin } from "../../components/ShopAdmin";
+import { LabelsFieldsSettings } from "../../components/LabelsFieldsSettings";
 import { OnlinePaymentsSettings } from "../../components/OnlinePayPanels";
 import { PriceRulePanel } from "../../components/PriceRulePanel";
 import { DocumentStatusSettings } from "../../components/DocumentStatuses";
@@ -1262,6 +1263,8 @@ export function SettingsPage() {
       <PriceRulePanel />
 
       <DocumentStatusSettings />
+
+      <LabelsFieldsSettings />
 
       <RemindersPanel />
       <SyncPanel />

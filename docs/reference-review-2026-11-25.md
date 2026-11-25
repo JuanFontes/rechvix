@@ -55,6 +55,6 @@ OBSERVED = visible on a sheet; INFERRED = reasonable reading of a control; UNKNO
 2. Mobile statement PDF, invoice preview, and ageing on To collect.
 3. Web filing calendar for Spain and India.
 
-Added later the same day: bank reconciliation (server migration 0066, `bankrec` module, Accounting page panel), tested against a real local PostgreSQL 18 and seen in a browser against a running server. Not done in this pass, and why: fixed-asset register, custom fields, labels, per-model tax calculators and
+Added later the same day: bank reconciliation (server migration 0066, `bankrec` module, Accounting page panel), tested against a real local PostgreSQL 18 and seen in a browser against a running server. Fixed-asset register, labels and custom fields were built afterwards (migrations 0067 and 0068). Still not done, and why: per-model tax calculators and
 list-preference settings are each a separate feature with its own data model and tests. The phone UI was not rendered (no emulator
 in this environment). The filing-calendar panel was not viewed in a browser; the bank reconciliation panel was, at desktop width only (the window would not shrink to phone width).

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TagsPanel } from "../../components/TagsPanel";
 import ui from "../../components/ui.module.css";
 import { api, ApiError } from "../../lib/api-client";
 import { GST_STATE_CODES } from "../../lib/gstStateCodes";
@@ -555,6 +556,7 @@ export function ContactDetailPage({ id }: { id: string }) {
         </div>
       </div>
 
+      <TagsPanel kind="PARTY" id={p.ID} />
       <LedgerPanel partyId={p.ID} />
       <RecordPaymentPanel party={p} />
       <TaxRegistrationsPanel partyId={p.ID} />

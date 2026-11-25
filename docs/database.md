@@ -82,6 +82,8 @@ are the source of truth; re-derive this file from them.
 | `fiscal_periods` | Period locking; `accounting.override_locked_period` is a distinct permission from `accounting.post`. |
 | `receipts`, `payments`, `bank_accounts`, `reconciliations` | Cash/bank side of the ledger. |
 | `bank_statement_lines` (`0066`) | Imported bank-statement lines (signed amount: + in, − out), each `UNMATCHED`, `MATCHED` to one receipt or supplier payment, or `IGNORED` with a reason. RLS by organisation. `(org, bank account, line_hash, occurrence)` is unique so re-importing a statement adds nothing; `(org, matched_kind, matched_id)` is unique while matched so one receipt/payment backs one line. CHECK constraints keep status, match pair and resolution timestamp consistent. Matching posts no journal. |
+| `fixed_assets`, `fixed_asset_depreciation` (`0067`) | Register of long-lived assets (cost, residual value, life in months, `STRAIGHT_LINE` or `DECLINING_BALANCE` with an annual rate, accumulated depreciation, `ACTIVE`/`DISPOSED`) and each asset's share of every monthly depreciation journal (unique per asset and month). RLS by organisation. |
+| `labels`, `label_assignments`, `custom_field_definitions`, `custom_field_values` (`0068`) | Organisation-defined labels and typed extra fields, attached to a contact, product, sales or purchase document by `(entity_type, entity_id)`; one answer per field per item, stored as text and type-checked by the service. RLS by organisation. |
 
 ## Reporting (`0022`)
 

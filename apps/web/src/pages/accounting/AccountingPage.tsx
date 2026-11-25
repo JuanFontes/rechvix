@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { BankReconciliationPanel } from "../../components/BankReconciliationPanel";
+import { FixedAssetsPanel } from "../../components/FixedAssetsPanel";
 import { ReceivablesPanel } from "../../components/ReceivablesPanel";
 import { ReportTable } from "../../components/ReportTable";
 import ui from "../../components/ui.module.css";
@@ -287,6 +288,8 @@ export function AccountingPage() {
       </div>
 
       <BankReconciliationPanel />
+
+      <FixedAssetsPanel />
 
       <FiscalPeriodsPanel />
     </div>

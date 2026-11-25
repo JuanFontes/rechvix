@@ -49,6 +49,7 @@ import (
 	ewaybillpg "rechvix/internal/modules/ewaybill/pg"
 	portalv1 "rechvix/internal/modules/ewaybill/portal/v1"
 	"rechvix/internal/modules/fieldservice"
+	"rechvix/internal/modules/fixedassets"
 	"rechvix/internal/modules/gstindia"
 	gstindiaapp "rechvix/internal/modules/gstindia/app"
 	gstindiadomain "rechvix/internal/modules/gstindia/domain"
@@ -95,6 +96,7 @@ import (
 	staffhttp "rechvix/internal/modules/staff/httpapi"
 	staffpg "rechvix/internal/modules/staff/pg"
 	"rechvix/internal/modules/stockprojection"
+	"rechvix/internal/modules/tagging"
 	taxationapp "rechvix/internal/modules/taxation/app"
 	taxationpg "rechvix/internal/modules/taxation/pg"
 	"rechvix/internal/modules/taxregimes"
@@ -655,6 +657,8 @@ func run() error {
 			sepa.NewHandlers(sepa.NewService(pool, accountingSvc, aead, permissionsChecker, auditRecorder)).Mount(r)
 			reminders.NewHandlers(remindersSvc).Mount(r)
 			bankrec.NewHandlers(bankrec.NewService(pool, permissionsChecker, auditRecorder)).Mount(r)
+			tagging.NewHandlers(tagging.NewService(pool, permissionsChecker, auditRecorder)).Mount(r)
+			fixedassets.NewHandlers(fixedassets.NewService(pool, accountingSvc, permissionsChecker, auditRecorder)).Mount(r)
 			datasync.NewHandlers(datasyncSvc).Mount(r)
 			recurring.NewHandlers(recurringSvc).Mount(r)
 			pricerules.NewHandlers(priceRulesSvc).Mount(r)
