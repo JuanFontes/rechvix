@@ -9,7 +9,7 @@
 # toolchains stay independent and this stage can be skipped entirely by
 # anything that only wants the API, e.g. a horizontally-scaled deployment
 # behind a CDN/static host for the frontend instead).
-FROM node:22-alpine AS webbuild
+FROM node:26-alpine AS webbuild
 WORKDIR /web
 COPY apps/web/package.json apps/web/package-lock.json* ./
 RUN npm ci
