@@ -28,6 +28,7 @@ Use [`prompts/AI_INTEGRATION_PROMPT.md`](prompts/AI_INTEGRATION_PROMPT.md) to ha
 - **Keep connected accounts.** Finalized documents post accounting entries alongside their supported tax and stock effects. Review ledgers, receivables/payables, ageing, trial balance, fiscal periods and expenses with supporting attachments.
 - **Print and share documents.** Choose A4, compact and thermal print layouts, invoice branding and language. Hindi invoices support browser printing with an embedded Devanagari font. WhatsApp/PDF sharing controls are available on supported devices and documents.
 - **Work across languages and currencies.** Choose from eight interface languages—English, Spanish, French, German, Italian, Portuguese, Dutch and Hindi. Invoice language and currency can be selected separately; foreign-currency invoices use an explicit stored exchange rate for accounting in the company currency.
+- **Reconcile your bank and close quarters.** Load a bank statement (CSV) and match each line to a receipt or supplier payment you already booked, with exact-amount suggestions; nothing is posted for you. Close the last or current quarter in one confirmed step. A filing calendar for Spain and India shows when returns normally fall due (a reminder, not a filing).
 - **Prepare files for an accountant.** Download company-scoped tax workbooks, source registers, review checks and audit evidence for India, Spain, the UK and the US. Unknown statutory inputs remain visibly unresolved instead of being guessed as zero.
 - **Sell and serve.** Recurring invoices, workflow statuses, delivery-note billing, a CRM pipeline, field service (customer equipment, incidents, maintenance plans), electronic signatures, card and PayPal payment links, SEPA direct-debit files, emailed documents with read receipts, overdue reminders, and an online shop with a client area. Each is opt-in; see the [changelog](CHANGELOG.md) for what each does and does not do.
 - **Organize the daily workload.** Record staff, attendance and calendar tasks; use global search, keyboard shortcuts, light/dark themes and responsive navigation.
@@ -43,6 +44,17 @@ These screenshots were captured from the **0.14.24 application on 21 October 202
 |---|---|
 | ![Rechvix invoice builder with selected customer, industrial product, quantity, price and finalize controls](docs/assets/tutorial/24-invoice-builder-filled.png) **Single-workspace invoicing** | ![Rechvix inventory stock card showing warehouse balance, stock adjustments and purchase and sale movement history](docs/assets/tutorial/31-stock-movements.png) **Warehouse inventory and stock history** |
 | ![Rechvix new-customer form opened inline while building an invoice](docs/assets/tutorial/23-inline-customer.png) **Create a customer without leaving the invoice** | ![Rechvix dashboard with sales, purchases, receivables, payables and stock valuation](docs/assets/tutorial/05-dashboard.png) **Business dashboard** |
+
+### New on `main` since 0.23.2 (not yet in a tagged release)
+
+Captured on 25 November 2026 from the development build, with fictional records, a real local server and PostgreSQL, and no mocked responses.
+
+| | |
+|---|---|
+| ![Rechvix Accounting page, Bank reconciliation panel: a statement with nine lines, three already matched, and exact-amount receipt and payment suggestions next to the open lines](docs/assets/screenshots/bank-reconciliation.webp) **Bank reconciliation.** Statement lines on one side, the receipts and supplier payments you already booked on the other. Matching changes no accounts; a bank charge with nothing behind it is ignored with a reason, or you record it first. | ![Rechvix Accounting page: Close a quarter shows Jul-Sep 2026 locked, with a button for the current quarter and the fiscal-periods table](docs/assets/screenshots/quarter-close.webp) **Close a quarter in one step.** Reuses or creates the quarter's fiscal period and locks it after a clear confirmation. |
+| ![Rechvix GST page, Filing calendar: GSTR-1 and GSTR-3B for the next four months with due dates and days left](docs/assets/screenshots/filing-calendar.webp) **Filing calendar** (India and Spain). When returns normally fall due. It does not file anything and cannot tell whether a return was filed. | |
+
+The **phone app** (Expo, offline-first) also gained, in the same period: a first screen that asks "on this phone only" or "with my server", payment reminders with the invoice or statement PDF and an honest history, an account statement PDF, receivables by age, a Day book, offline Reports, a whole-bill discount and terms and conditions on invoices. The phone screens have not been screenshotted or run on a device yet, so there are no pictures of them here; see [`apps/mobile/README.md`](apps/mobile/README.md) and the [changelog](CHANGELOG.md).
 
 **[View all 48 screenshots and the step-by-step tutorial](tutorial.md)**, including purchases, contacts, accounting, expenses, staff, calendar, tax pages for four countries, backup, settings and phone layouts.
 
