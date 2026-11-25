@@ -132,10 +132,13 @@ foreach ($icon in @(
   "StoreLogo.png",
   "Square44x44Logo.png",
   "Square150x150Logo.png",
-  "Square71x71Logo.png"
+  "Square71x71Logo.png",
+  "Square310x310Logo.png"
 )) {
   Copy-Item (Join-Path $iconsDir $icon) -Destination $assetsDir
 }
+# Extra tile and taskbar assets (wide tile, high-DPI scales, unplated taskbar icons), generated once from icon.png.
+Copy-Item (Join-Path $msixDir "Assets\*") -Destination $assetsDir -Force
 
 # WebView2Loader.dll: only present if the build actually links it as a
 # loose file rather than statically — copy it along if it exists next to
