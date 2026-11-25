@@ -8,6 +8,7 @@ import {
   countByState, getOrg, getProfile, kvDel, kvGet, kvSet, resetSyncing, setProfile, createParty,
   type Org, type Profile, type SaleState,
 } from "../db/repo";
+import { profileFromOrg } from "../lib/profile";
 import { cartActions, getCart, initCart } from "./cart";
 import { checkout, saveQuote, type CheckoutResult, type QuoteResult } from "./checkout";
 import { cancelSyncedInvoice, type Cancelled } from "../sync/correct";
@@ -224,15 +225,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (e instanceof ApiError) return e.code === "MFA_REQUIRED" ? "MFA_REQUIRED" : e.message;
       return "Can't reach the server. Check your connection.";
     }
-    await kvSet(dbRef.current!, "email", mail.trim());
+    const d = dbRef.current!;
+    await kvSet(d, "email", mail.trim());
     setEmail(mail.trim());
     setSessionExpired(false);
-    setLinking(null);
     linkedRef.current = true;
     setHasCookie(true);
+    if (!(await getProfile(d))) {
+      // First run, and the person chose to start from their server: there is no business on the phone yet, so download it and build the
+      // profile from the server's company. The sign-in screen stays up until that has worked, so there is no flash of the welcome screen.
+      await syncNow();
+      const o = await getOrg(d);
+      if (!o) return "You are signed in, but the business details could not be downloaded. Check your connection and try again.";
+      await setProfile(d, profileFromOrg(o));
+      setPhase("ready");
+      setLinking(null);
+      await refresh();
+      return null;
+    }
+    setLinking(null);
     void syncNow(); // uploads everything made on the phone, then downloads the business's data
     return null;
-  }, [api, syncNow]);
+  }, [api, syncNow, refresh]);
 
   const clearSession = useCallback(async () => {
     cookieRef.current = null;

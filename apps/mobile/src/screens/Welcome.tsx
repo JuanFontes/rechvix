@@ -5,7 +5,7 @@ import { DEFAULT_PROFILE, type Profile } from "../db/repo";
 import { GST_RATES } from "../lib/tax";
 import { useApp } from "../state/app";
 import { radius, space, usePalette } from "../theme";
-import { Button, Chip, Field, Icon, Label, type IconName } from "../ui/kit";
+import { Button, Chip, Field, Icon, Label, Tap, type IconName } from "../ui/kit";
 import { T } from "../ui/text";
 
 const CURRENCIES = [["INR", "₹ Rupee"], ["USD", "$ Dollar"], ["EUR", "€ Euro"], ["GBP", "£ Pound"], ["AED", "AED Dirham"]] as const;
@@ -26,9 +26,9 @@ function Feature({ icon, title, text }: { icon: IconName; title: string; text: s
 }
 
 export function Welcome() {
-  const { completeSetup } = useApp();
+  const { completeSetup, startLinking } = useApp();
   const c = usePalette();
-  const [step, setStep] = useState<0 | 1>(0);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
   const [p, setP] = useState<Profile>({ ...DEFAULT_PROFILE });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export function Welcome() {
           <Fade delay={180}><View style={{ gap: 20 }}>
             <Feature icon="flash-outline" title="Ready in a minute" text="No account and no server to set up first." />
             <Feature icon="receipt-outline" title="Proper GST invoices" text="Share a clean PDF on WhatsApp in two taps." />
-            <Feature icon="cloud-upload-outline" title="Connect a server any time" text="Add your Rechvix server later and everything syncs." />
+            <Feature icon="cloud-upload-outline" title="Phone only, or your server" text="Work on this phone alone, or sign in to your Rechvix server. Both work offline." />
           </View></Fade>
           <Fade delay={320}><Button title="Get started" onPress={() => setStep(1)} icon="arrow-forward" /></Fade>
         </SafeAreaView>
@@ -60,11 +60,24 @@ export function Welcome() {
     );
   }
 
+  if (step === 1) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
+        <ScrollView contentContainerStyle={{ padding: space.xl, gap: space.lg, paddingBottom: 48 }}>
+          <Button title="Back" kind="quiet" icon="chevron-back" onPress={() => setStep(0)} style={{ alignSelf: "flex-start", minHeight: 44 }} />
+          <View style={{ gap: 6 }}><T v="title">How will you use Rechvix?</T><T v="body" muted>You can change this later in More. Nothing you make is ever lost.</T></View>
+          <Choice icon="phone-portrait-outline" title="On this phone only" tag="Works offline" text="Start billing in a minute. No account and no server. Add a server later and everything merges." onPress={() => setStep(2)} />
+          <Choice icon="cloud-outline" title="With my Rechvix server" tag="Syncs, and works offline too" text="Sign in to your company. Your items, customers and invoices come to this phone, and sales made without signal upload when you are back online." onPress={startLinking} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: space.xl, gap: space.lg, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-          <Button title="Back" kind="quiet" icon="chevron-back" onPress={() => setStep(0)} style={{ alignSelf: "flex-start", minHeight: 44 }} />
+          <Button title="Back" kind="quiet" icon="chevron-back" onPress={() => setStep(1)} style={{ alignSelf: "flex-start", minHeight: 44 }} />
           <View style={{ gap: 6 }}><T v="title">Your business</T><T v="body" muted>This appears on your invoices. You can change it any time.</T></View>
           <Field label="Business name" value={p.name} onChangeText={(v) => { set("name", v); setErr(null); }} placeholder="e.g. Sharma Hardware" autoCapitalize="words" error={err} />
           <Field label="Phone (optional)" value={p.phone} onChangeText={(v) => set("phone", v)} keyboardType="phone-pad" />
@@ -80,10 +93,24 @@ export function Welcome() {
           <View style={{ height: 6 }} />
           <Button title="Start billing" onPress={() => void finish()} busy={busy} icon="checkmark" />
           <View style={{ flexDirection: "row", gap: 10, alignItems: "center", padding: 14, borderRadius: radius.lg, backgroundColor: c.accentSoft }}>
-            <Icon name="cloud-outline" size={22} color={c.accent} /><T v="small" style={{ flex: 1 }}>Have a Rechvix server? Connect it later from More. Your data uploads and merges safely.</T>
+            <Icon name="cloud-outline" size={22} color={c.accent} /><T v="small" style={{ flex: 1 }}>Have a Rechvix server? You can connect it later from More. Your data uploads and merges safely.</T>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function Choice({ icon, title, tag, text, onPress }: { icon: IconName; title: string; tag: string; text: string; onPress: () => void }) {
+  const c = usePalette();
+  return (
+    <Tap label={`${title}. ${tag}`} onPress={onPress} style={{ backgroundColor: c.surface, borderRadius: radius.lg + 4, borderWidth: 1, borderColor: c.borderStrong, padding: space.xl, gap: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+        <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: c.accentSoft, alignItems: "center", justifyContent: "center" }}><Icon name={icon} size={28} color={c.accent} /></View>
+        <View style={{ flex: 1 }}><T v="h2">{title}</T><T v="small" color={c.accent} style={{ fontFamily: "IBMPlexSans_600SemiBold" }}>{tag}</T></View>
+        <Icon name="chevron-forward" size={22} color={c.faint} />
+      </View>
+      <T v="body" muted>{text}</T>
+    </Tap>
   );
 }

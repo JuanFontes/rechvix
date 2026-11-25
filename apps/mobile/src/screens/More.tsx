@@ -24,7 +24,7 @@ function Row({ icon, title, sub, onPress, tone }: { icon: IconName; title: strin
   );
 }
 
-export function More({ openCustomers, openProfile, openItems, openDesign, openQuotes, openDayBook }: { openCustomers: () => void; openProfile: () => void; openItems: () => void; openDesign: () => void; openQuotes: () => void; openDayBook: () => void }) {
+export function More({ openCustomers, openProfile, openItems, openDesign, openQuotes, openDayBook, openReports }: { openCustomers: () => void; openProfile: () => void; openItems: () => void; openDesign: () => void; openQuotes: () => void; openDayBook: () => void; openReports: () => void }) {
   const { changed, profile, saveProfile, linked, server, email, lastSyncAt, counts, syncNow, syncing, online, logout, disconnect, startLinking, db, businessName } = useApp();
   const c = usePalette();
   async function startRestore() {
@@ -59,6 +59,8 @@ export function More({ openCustomers, openProfile, openItems, openDesign, openQu
             <Row icon="people-outline" title="Customers" onPress={openCustomers} />
             <View style={{ height: 1, backgroundColor: c.border }} />
             <Row icon="cube-outline" title="Items & stock" onPress={openItems} />
+            <View style={{ height: 1, backgroundColor: c.border }} />
+            <Row icon="bar-chart-outline" title="Reports" sub="Sales, customers, items, money in, stock" onPress={openReports} />
             <View style={{ height: 1, backgroundColor: c.border }} />
             <Row icon="calendar-outline" title="Day book" sub="Invoices, money in and credit notes by period" onPress={openDayBook} />
             <View style={{ height: 1, backgroundColor: c.border }} />
@@ -126,6 +128,7 @@ export function ProfileEditor({ onClose }: { onClose: () => void }) {
           <Field label="Phone" value={p.phone} onChangeText={(v) => set("phone", v)} keyboardType="phone-pad" />
           <Field label="Address" value={p.address} onChangeText={(v) => set("address", v)} multiline style={{ minHeight: 76, paddingTop: 12, textAlignVertical: "top" }} />
           <Field label="GSTIN" value={p.gstin} onChangeText={(v) => { const g = v.toUpperCase(); set("gstin", g); if (/^\d\d/.test(g)) set("gstState", g.slice(0, 2)); }} autoCapitalize="characters" autoCorrect={false} />
+          <Field label="Terms and conditions on invoices (optional)" value={p.terms} onChangeText={(v) => set("terms", v)} multiline hint="Printed at the foot of invoices and quotations, for example payment terms or a returns policy." style={{ minHeight: 96, paddingTop: 12, textAlignVertical: "top" }} />
           <Field label="Invoice number prefix" value={p.invoicePrefix} onChangeText={(v) => set("invoicePrefix", v)} autoCapitalize="characters" hint={org ? "Used until a sale reaches your server, which then numbers it." : "Invoices are numbered INV-0001, INV-0002…"} />
           {p.country === "IN" ? (
             <View style={{ gap: 8 }}><Label>Usual GST rate for new items</Label>

@@ -148,8 +148,10 @@ export interface Profile {
   pricingMode: "INCLUSIVE" | "EXCLUSIVE";
   /** The look of invoices and shared PDFs. Presentation only. */
   invoiceTemplate: "classic" | "modern" | "thermal";
+  /** Printed at the foot of invoices and quotations (payment terms, interest on late payment, return policy...). Empty = nothing printed. */
+  terms: string;
 }
-export const DEFAULT_PROFILE: Profile = { name: "", phone: "", address: "", gstin: "", country: "IN", currency: "INR", gstState: "", defaultGst: "18", invoicePrefix: "INV-", pricingMode: "INCLUSIVE", invoiceTemplate: "classic" };
+export const DEFAULT_PROFILE: Profile = { name: "", phone: "", address: "", gstin: "", country: "IN", currency: "INR", gstState: "", defaultGst: "18", invoicePrefix: "INV-", pricingMode: "INCLUSIVE", invoiceTemplate: "classic", terms: "" };
 export async function getProfile(db: Db): Promise<Profile | null> {
   const v = await kvGet(db, "profile");
   return v ? { ...DEFAULT_PROFILE, ...(JSON.parse(v) as Partial<Profile>) } : null;

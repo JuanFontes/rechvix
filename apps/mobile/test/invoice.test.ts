@@ -76,3 +76,18 @@ for (const t of keys) {
     assert.match(h, /BANK TRANSFER/); assert.match(h, /UTR&lt;1&gt;/); assert.doesNotMatch(h, /UTR<1>/);
   });
 }
+
+
+test("terms and conditions print on invoices and quotations (escaped), in every design, and never on credit or delivery notes", async () => {
+  const mk = (kind: "invoice" | "quotation" | "credit" | "delivery") => ({
+    number: "INV-1", date: 1, business: { ...DEFAULT_PROFILE, name: "Shop", terms: "Pay in 15 days.\nLate fee <5%> & interest" }, customerName: "A", lines: [], calc: calcInvoice([], "INCLUSIVE", false), currency: "INR", payment: paymentSummary(0n, 0n), kind,
+  }) as unknown as InvoiceData;
+  for (const t of ["classic", "modern", "thermal"] as const) {
+    const h = invoiceHtml(mk("invoice"), t);
+    assert.match(h, /Terms and conditions/); assert.match(h, /Pay in 15 days\.<br>Late fee &lt;5%&gt; &amp; interest/); assert.doesNotMatch(h, /<5%>/);
+  }
+  assert.match(invoiceHtml(mk("quotation"), "classic"), /Terms and conditions/);
+  assert.doesNotMatch(invoiceHtml(mk("credit"), "classic"), /Terms and conditions/);
+  assert.doesNotMatch(invoiceHtml(mk("delivery"), "classic"), /Terms and conditions/);
+  assert.doesNotMatch(invoiceHtml({ ...mk("invoice"), business: { ...DEFAULT_PROFILE, name: "Shop" } }, "classic"), /Terms and conditions/, "no terms set, nothing printed");
+});

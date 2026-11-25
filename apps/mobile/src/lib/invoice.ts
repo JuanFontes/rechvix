@@ -99,6 +99,8 @@ const paymentRows = (d: InvoiceData, m: (x: bigint) => string) =>
 
 const headerInfo = (d: InvoiceData) => `${nl2br(d.business.address)}${d.business.phone ? `<br>Phone ${esc(d.business.phone)}` : ""}${d.business.gstin ? `<br>GSTIN ${esc(d.business.gstin)}` : ""}`;
 const customerBlock = (d: InvoiceData) => `<div class="k">Billed to</div><div class="big">${esc(d.customerName)}</div>${d.customerGstin ? `<div>GSTIN ${esc(d.customerGstin)}</div>` : ""}${d.customerPhone ? `<div>${esc(d.customerPhone)}</div>` : ""}<div class="muted">Place of supply: ${d.placeOfSupply ? esc(d.placeOfSupply) : "same state as seller (customer state not recorded)"}</div>`;
+/** The business's standing terms, on invoices and quotations only (a credit note or delivery note is not the place for them). */
+const termsBlock = (d: InvoiceData, cls = "muted") => ((!d.kind || d.kind === "invoice" || d.kind === "quotation") && d.business.terms?.trim() ? `<div class="${cls}" style="margin-top:14px;font-size:10.5px"><b>Terms and conditions</b><br>${nl2br(d.business.terms.trim())}</div>` : "");
 const flags = (d: InvoiceData) => `${d.cancelled ? `<div class="stamp">CANCELLED</div>` : ""}${d.corrects ? `<div class="muted">Corrects invoice ${esc(d.corrects)}</div>` : ""}`;
 
 /** Classic: bordered A4 tax invoice. */
@@ -122,7 +124,7 @@ function classic(d: InvoiceData): string {
 ${incl ? `<div class="muted" style="margin-top:4px">* Rates include GST. Tax is shown separately below.</div>` : ""}
 <div class="two"><div><table><thead><tr><th>GST rate</th><th class="r">Taxable</th><th class="r">Tax</th></tr></thead><tbody>${byRate || `<tr><td colspan="3" class="muted">No GST on this invoice</td></tr>`}</tbody></table></div>
 <div><table class="tot"><tr><td>Taxable value</td><td class="r">${m(d.calc.taxableMinor)}</td></tr>${taxSummaryRows(d, m)}<tr class="grand"><td>Total</td><td class="r">${m(d.calc.totalMinor)}</td></tr>${paymentRows(d, m)}</table></div></div>
-${d.note ? `<div style="margin-top:10px">${nl2br(d.note)}</div>` : ""}<div class="muted" style="margin-top:26px">Thank you for your business.</div>`;
+${d.note ? `<div style="margin-top:10px">${nl2br(d.note)}</div>` : ""}${termsBlock(d)}<div class="muted" style="margin-top:26px">Thank you for your business.</div>`;
 }
 
 /** Modern: airy, one-column, big total. */
@@ -146,7 +148,7 @@ function modern(d: InvoiceData): string {
 <div style="margin-top:14px"><div class="row"><span>Taxable value</span><span>${m(d.calc.taxableMinor)}</span></div>${comps}</div>
 <div class="total"><span>Total</span><b>${m(d.calc.totalMinor)}</b></div>
 ${settleLines(d, m).map((l) => `<div class="row${l.tone === "hist" ? " muted" : ""}"${l.tone === "due" ? ' style="color:#16211c;font-weight:700"' : ""}><span>${l.k}</span><span>${l.v}</span></div>`).join("")}
-${d.note ? `<div style="margin-top:14px" class="muted">${nl2br(d.note)}</div>` : ""}<div class="muted" style="margin-top:30px;text-align:center">Thank you for your business.</div>`;
+${d.note ? `<div style="margin-top:14px" class="muted">${nl2br(d.note)}</div>` : ""}${termsBlock(d)}<div class="muted" style="margin-top:30px;text-align:center">Thank you for your business.</div>`;
 }
 
 /** Thermal: 80 mm receipt. Monospace, single column, no colour. */
@@ -165,7 +167,7 @@ ${lines}<hr>
 <div class="ln"><span>Taxable value</span><span>${m(d.calc.taxableMinor)}</span></div>${comps}
 <div class="ln tot"><span>TOTAL</span><span>${m(d.calc.totalMinor)}</span></div>${incl ? `<div class="c">(prices include GST)</div>` : ""}<hr>
 ${settleLines(d, m).map((l) => `<div class="ln${l.tone === "due" ? " b" : ""}"><span>${l.k}</span><span>${l.v}</span></div>`).join("")}${statusText(d) ? `<div class="c b" style="margin-top:4px">${esc(statusText(d))}</div>` : ""}<hr>
-<div class="c">Thank you!</div>`;
+${termsBlock(d, "")}<div class="c">Thank you!</div>`;
 }
 
 const parse = (s: string): bigint => {

@@ -3,6 +3,7 @@ import {
   type SaleLine, type SalePayload,
 } from "../db/repo";
 import type { Db } from "../db/types";
+import { allocateBillDiscount, type BillDiscountResult } from "../lib/billDiscount";
 import { dec, minorToString, parseMinor, toMinor } from "../lib/decimal";
 import { calcInvoice, isInterState, snapshot, stateFromGstin } from "../lib/tax";
 import type { Cart } from "./cart";
@@ -13,7 +14,13 @@ export class CheckoutError extends Error {}
 /** The figures for the cart as it stands. Pure: the screen shows these, and saving stores exactly these. */
 export function priceCart(cart: Cart, sellerState: string | null, customerState: string | null) {
   const inter = isInterState(sellerState, customerState);
-  return calcInvoice(cart.lines.map((l) => ({ qty: l.qty, price: l.price, discount: l.discount, gstRate: l.gstRate })), cart.mode, inter);
+  const bd = billDiscountFor(cart);
+  return calcInvoice(cart.lines.map((l, i) => ({ qty: l.qty, price: l.price, discount: bd.ok ? bd.discounts[i]! : l.discount, gstRate: l.gstRate })), cart.mode, inter);
+}
+
+/** The whole-bill discount spread over the items (or why it can't be). The screen shows it; saving stores exactly these item discounts. */
+export function billDiscountFor(cart: Cart): BillDiscountResult {
+  return allocateBillDiscount(cart.lines.map((l) => ({ qty: l.qty, price: l.price, discount: l.discount, gstRate: l.gstRate })), cart.mode, cart.billDiscount);
 }
 
 /** What the customer pays now. null text = the whole amount (when a method is chosen); "Pay later" (no method) = nothing. */
@@ -38,6 +45,8 @@ export async function checkout(db: Db, cart: Cart, ids: { uid: () => string; now
   const party = await getParty(db, cart.customerId);
   const sellerState = profile.gstState || null;
   const customerState = stateFromGstin(party?.gstin) ?? null;
+  const bd = billDiscountFor(cart);
+  if (!bd.ok) throw new CheckoutError(bd.error);
   const calc = priceCart(cart, sellerState, customerState);
   if (calc.lines.some((l) => l.invalid)) throw new CheckoutError("Check the amounts: a discount can't be more than the item's price.");
 
@@ -48,8 +57,8 @@ export async function checkout(db: Db, cart: Cart, ids: { uid: () => string; now
     return { localId: dup.local_id, number: dup.local_number ?? "", totalMinor: calc.totalMinor, receivedMinor: have };
   }
 
-  const lines: SaleLine[] = cart.lines.map((l) => ({
-    variantId: l.variantId, name: l.name, unitId: l.unitId, qty: l.qty, price: l.price, discount: l.discount || "0",
+  const lines: SaleLine[] = cart.lines.map((l, i) => ({
+    variantId: l.variantId, name: l.name, unitId: l.unitId, qty: l.qty, price: l.price, discount: bd.discounts[i] || "0",
     gstRate: l.gstRate, unitLabel: l.unitLabel, hsn: l.hsn, ...(l.custom ? { custom: true } : {}),
   }));
   const received = receivedFor(cart, calc.totalMinor);
@@ -93,12 +102,14 @@ export async function saveQuote(db: Db, cart: Cart, ids: { now: number }, validD
   const party = await getParty(db, cart.customerId);
   const sellerState = profile.gstState || null;
   const customerState = stateFromGstin(party?.gstin) ?? null;
+  const bd = billDiscountFor(cart);
+  if (!bd.ok) throw new CheckoutError(bd.error);
   const calc = priceCart(cart, sellerState, customerState);
   if (calc.lines.some((l) => l.invalid)) throw new CheckoutError("Check the amounts: a discount can't be more than the item's price.");
   const dup = await db.first<{ local_id: string; number: string; total: string }>("SELECT local_id, number, total FROM quotes WHERE local_id=?", [cart.saveId]);
   if (dup) return { localId: dup.local_id, number: dup.number, totalMinor: parseMinor(dup.total) };
-  const lines: SaleLine[] = cart.lines.map((l) => ({
-    variantId: l.variantId, name: l.name, unitId: l.unitId, qty: l.qty, price: l.price, discount: l.discount || "0",
+  const lines: SaleLine[] = cart.lines.map((l, i) => ({
+    variantId: l.variantId, name: l.name, unitId: l.unitId, qty: l.qty, price: l.price, discount: bd.discounts[i] || "0",
     gstRate: l.gstRate, unitLabel: l.unitLabel, hsn: l.hsn, ...(l.custom ? { custom: true } : {}),
   }));
   const payload: SalePayload = {

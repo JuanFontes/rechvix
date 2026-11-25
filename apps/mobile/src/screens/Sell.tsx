@@ -13,8 +13,8 @@ import { unitPriceFor } from "../lib/sale";
 import { afterSale } from "../lib/stock";
 import { shareSale } from "../lib/share";
 import { GST_RATES, stateFromGstin } from "../lib/tax";
-import { cartActions, cartHasErrors, useCart, type CartLine } from "../state/cart";
-import { CheckoutError, priceCart, receivedFor } from "../state/checkout";
+import { cartActions, cartHasErrors, useCart, type Cart, type CartLine } from "../state/cart";
+import { CheckoutError, billDiscountFor, priceCart, receivedFor } from "../state/checkout";
 import { uid, useApp } from "../state/app";
 import { fonts, radius, space, usePalette } from "../theme";
 import { Badge, Button, Card, Chip, Divider, Empty, Field, Header, Icon, IconButton, Label, Screen, Tap } from "../ui/kit";
@@ -204,6 +204,8 @@ export function Sell({ onDone, addItem }: { onDone: (localId: string) => void; a
                   </View>
                 ))}
               </Card>
+
+              <BillDiscountRow cart={cart} currency={currency} />
 
               {!cart.editing ? (
                 <>
@@ -426,5 +428,31 @@ export function CustomerPicker({ visible, onClose, onPick, noWalkIn }: { visible
           )} ItemSeparatorComponent={Divider} />
       </SafeAreaView>
     </Modal>
+  );
+}
+
+/** "Discount on the whole bill": typed once as an amount or a percentage, and shared over the items so each keeps a correct GST figure. */
+function BillDiscountRow({ cart, currency }: { cart: Cart; currency: string }) {
+  const c = usePalette();
+  const bd = cart.billDiscount;
+  const r = billDiscountFor(cart);
+  if (!bd) {
+    return <Tap label="Add a discount on the whole bill" onPress={() => cartActions.patch({ billDiscount: { kind: "amount", text: "" } })} style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start" }}><T v="small" color={c.accent} style={{ fontFamily: fonts.bodySemi }}>+ Discount on the whole bill</T></Tap>;
+  }
+  return (
+    <View style={{ gap: 8, backgroundColor: c.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: c.border, padding: space.md }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <Label>Discount on the whole bill</Label>
+        <Tap label="Remove the bill discount" onPress={() => cartActions.patch({ billDiscount: null })} style={{ minHeight: 36, justifyContent: "center" }}><T v="small" color={c.negative} style={{ fontFamily: fonts.bodySemi }}>Remove</T></Tap>
+      </View>
+      <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+        <Chip title={currency} active={bd.kind === "amount"} onPress={() => cartActions.patch({ billDiscount: { ...bd, kind: "amount" } })} />
+        <Chip title="%" active={bd.kind === "percent"} onPress={() => cartActions.patch({ billDiscount: { ...bd, kind: "percent" } })} />
+        <TextInput accessibilityLabel={bd.kind === "percent" ? "Discount percentage" : `Discount amount in ${currency}`} value={bd.text} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={c.faint}
+          onChangeText={(t) => cartActions.patch({ billDiscount: { ...bd, text: t.replace(/[^0-9.]/g, "") } })}
+          style={{ flex: 1, minHeight: 48, borderRadius: radius.md, borderWidth: 1, borderColor: r.ok ? c.borderStrong : c.negative, paddingHorizontal: 12, fontSize: 17, color: c.text, fontFamily: fonts.mono, backgroundColor: c.bg }} />
+      </View>
+      {!r.ok ? <T v="small" color={c.negative}>{r.error}</T> : r.totalMinor > 0n ? <T v="small" muted>Takes {formatMinor(r.totalMinor, currency)} off the bill, shared over the items by price.</T> : null}
+    </View>
   );
 }

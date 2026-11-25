@@ -97,3 +97,29 @@ test("bill 6000, customer pays 3000: 3000 received, 3000 due, and the invoice sa
   cartActions.patch({ payMethod: "CASH", receivedText: "" });
   assert.equal((await checkout(db, getCart(), ids())).receivedMinor, 0n);
 });
+
+test("a whole-bill discount is saved as item discounts: stored lines, stored figures and the total agree, and the customer pays exactly that much less", async () => {
+  const db = await setup();
+  const bolt = (await getItem(db, "i1"))!, rice = (await getItem(db, "i2"))!;
+  const build = (discount: { kind: "amount" | "percent"; text: string } | null) => {
+    cartActions.clear("INCLUSIVE");
+    cartActions.patch({ customerId: "c1", customerName: "Gupta" });
+    cartActions.addProduct(bolt, "INCLUSIVE", unitPriceFor(bolt, "INCLUSIVE"));
+    cartActions.addProduct(rice, "INCLUSIVE", unitPriceFor(rice, "INCLUSIVE"));
+    cartActions.setQtyText(getCart().lines[1]!.key, "3");
+    cartActions.patch({ payMethod: "CASH", receivedText: null, billDiscount: discount });
+    return getCart();
+  };
+  const plain = await checkout(db, build(null), ids());            // 105 + 3 x 105 = 420.00
+  assert.equal(minorToString(plain.totalMinor), "420.00");
+  const r = await checkout(db, build({ kind: "amount", text: "33.33" }), { uid: () => "other", now: 2000 });
+  assert.equal(minorToString(r.totalMinor), "386.67");
+  const s = (await getSale(db, r.localId))!;
+  assert.equal(minorToString(saleTotalMinor(s)), "386.67", "the stored figures give the same total");
+  const off = s.payload.lines.reduce((n, l) => n + BigInt(Math.round(Number(l.discount) * 100)), 0n);
+  assert.equal(off, 3333n, "the item discounts add up to exactly the bill discount");
+  assert.equal(salePaidMinor(s, await paymentsForSale(db, r.localId)), r.totalMinor, "paid in full means the discounted total");
+  // A discount that is more than the bill is refused and nothing is saved.
+  await assert.rejects(() => checkout(db, build({ kind: "amount", text: "9999" }), { uid: () => "third", now: 3000 }), /more than the bill/);
+  assert.equal(await getSale(db, "third"), null);
+});

@@ -3,6 +3,7 @@ import type { Db } from "../db/types";
 import { kvGet, kvSet, type Product, type SaleLine, type SalePayload } from "../db/repo";
 import { dec, decToString } from "../lib/decimal";
 import { unitDecimals, validateQty, stepQty } from "../lib/qty";
+import type { BillDiscount } from "../lib/billDiscount";
 import type { PricingMode } from "../lib/tax";
 
 /** The bill being built. Lives outside any screen, so switching tabs or opening an editor never loses it, and it is saved to the
@@ -23,6 +24,8 @@ export interface Cart {
   receivedText: string | null;    // null = the full amount; otherwise what was typed
   dueDays: number | null;         // for pay-later / part-paid bills
   note: string;
+  /** A discount on the whole bill (see lib/billDiscount). Turned into item discounts when the bill is priced and saved. */
+  billDiscount?: BillDiscount | null;
   /** Chosen once per bill: tapping "Save" twice can only ever save one invoice. */
   saveId: string;
   /** When set, saving replaces this unsynced invoice instead of creating a new one. */
@@ -40,7 +43,7 @@ const uid = (): string => {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 };
 
-export const emptyCart = (mode: PricingMode): Cart => ({ customerId: null, customerName: "", lines: [], mode, payMethod: "CASH", receivedText: null, dueDays: null, note: "", saveId: uid(), editing: null, corrects: null });
+export const emptyCart = (mode: PricingMode): Cart => ({ customerId: null, customerName: "", lines: [], mode, payMethod: "CASH", receivedText: null, dueDays: null, note: "", billDiscount: null, saveId: uid(), editing: null, corrects: null });
 
 let cart: Cart = emptyCart("INCLUSIVE");
 const listeners = new Set<() => void>();
