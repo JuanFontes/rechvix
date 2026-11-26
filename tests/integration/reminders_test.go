@@ -210,3 +210,35 @@ func spainFixture(t *testing.T, ctx context.Context, acct *accountingapp.Service
 	}
 	return fx
 }
+
+// A reminder handed off by hand is recorded once however often it is uploaded, never claims delivery, and is listed per customer.
+func TestReminders_ManualActivity_RecordedOnceAndListed(t *testing.T) {
+	ctx := context.Background()
+	_, _, acct, _ := newTestAccountingServices(t)
+	fx := spainFixture(t, ctx, acct)
+	notif, _ := newNotifications(t, nil)
+	rem := reminders.NewService(sharedPool, notif, permissions.NewChecker(permissions.NewPGStore(sharedPool), sharedPool), audit.NewPGRecorder(sharedPool), nil)
+
+	in := reminders.Activity{PartyID: fx.CustomerID, Channel: "whatsapp", Status: "share_opened", WithPDF: true, Outstanding: "1234.50", ClientRef: "mobile:rem:1"}
+	first, err := rem.RecordActivity(ctx, fx.Principal, in)
+	if err != nil {
+		t.Fatalf("RecordActivity: %v", err)
+	}
+	again, err := rem.RecordActivity(ctx, fx.Principal, in)
+	if err != nil || again.ID != first.ID {
+		t.Fatalf("a retried upload must return the stored row (%v vs %v, err %v)", again, first, err)
+	}
+	rows, err := rem.ListActivity(ctx, fx.Principal, &fx.CustomerID, nil)
+	if err != nil || len(rows) != 1 || rows[0].Status != "share_opened" || rows[0].Outstanding != "1234.500000" || !rows[0].WithPDF {
+		t.Fatalf("activity = %+v err %v, want one share_opened row with the PDF flag", rows, err)
+	}
+	for _, bad := range []reminders.Activity{
+		{PartyID: fx.CustomerID, Channel: "whatsapp", Status: "delivered", ClientRef: "x"},
+		{PartyID: fx.CustomerID, Channel: "carrier-pigeon", Status: "prepared", ClientRef: "y"},
+		{PartyID: fx.CustomerID, Channel: "share", Status: "prepared"},
+	} {
+		if _, err := rem.RecordActivity(ctx, fx.Principal, bad); err == nil {
+			t.Fatalf("%+v must be refused (no delivered status, known channel, client_ref required)", bad)
+		}
+	}
+}

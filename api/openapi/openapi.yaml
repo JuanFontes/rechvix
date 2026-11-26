@@ -2704,6 +2704,25 @@ paths:
       responses:
         "200": { description: "Table with columns Month, Received, Paid, Net.", content: { application/json: { schema: { type: object } } } }
 
+  /reminders/activity:
+    post:
+      tags: [Reports]
+      summary: Record a payment reminder a person prepared or handed off by hand (WhatsApp, share sheet, copied text).
+      description: Status is one of prepared, share_opened, marked_sent, cancelled. There is no delivered status because Rechvix cannot see delivery. Posting the same client_ref again returns the stored row, so a retried upload books once.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [party_id, channel, status, client_ref], properties: { party_id: { type: string, format: uuid }, sales_document_id: { type: string, format: uuid }, channel: { type: string, enum: [whatsapp, share, text, email, sms, other] }, status: { type: string, enum: [prepared, share_opened, marked_sent, cancelled] }, with_pdf: { type: boolean }, outstanding: { type: string }, client_ref: { type: string, maxLength: 100 }, occurred_at: { type: string, format: date-time } } } } }
+      responses:
+        "200": { description: The stored activity row., content: { application/json: { schema: { type: object } } } }
+    get:
+      tags: [Reports]
+      summary: The newest reminder hand-offs, optionally for one customer (party_id) or one invoice (sales_document_id).
+      parameters:
+        - { name: party_id, in: query, schema: { type: string, format: uuid } }
+        - { name: sales_document_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: "{ activity: [...] }, newest first, at most 200.", content: { application/json: { schema: { type: object } } } }
+
 components:
   parameters:
     ReportFilterFrom:

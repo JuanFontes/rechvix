@@ -141,6 +141,10 @@ const MIGRATIONS: string[] = [
   ALTER TABLE reminders ADD COLUMN message TEXT NOT NULL DEFAULT '';
   CREATE INDEX reminders_sale ON reminders(sale_local_id, at);
   `,
+  // v7: which status of each reminder has been uploaded to the server's reminder history. NULL = not uploaded yet. Purely additive.
+  `
+  ALTER TABLE reminders ADD COLUMN synced_status TEXT;
+  `,
 ];
 
 export async function migrate(db: Db): Promise<void> {

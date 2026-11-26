@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	httpx "rechvix/internal/platform/http"
 	"rechvix/internal/platform/permissions"
@@ -21,6 +22,8 @@ func (h *Handlers) Mount(r chi.Router) {
 	r.Get("/reminders/settings", h.get)
 	r.Put("/reminders/settings", h.put)
 	r.Get("/reminders/log", h.log)
+	r.Post("/reminders/activity", h.recordActivity)
+	r.Get("/reminders/activity", h.listActivity)
 }
 
 func fail(w http.ResponseWriter, r *http.Request, err error) {
@@ -71,4 +74,49 @@ func (h *Handlers) log(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"reminders": rows})
+}
+
+func (h *Handlers) recordActivity(w http.ResponseWriter, r *http.Request) {
+	var in Activity
+	dec := json.NewDecoder(io.LimitReader(r.Body, 8192))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&in); err != nil {
+		httpx.WriteError(w, r, httpx.NewBadRequest("INVALID_BODY", "Request body is malformed."))
+		return
+	}
+	a, err := h.svc.RecordActivity(r.Context(), principal(r), in)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, a)
+}
+
+func (h *Handlers) listActivity(w http.ResponseWriter, r *http.Request) {
+	parse := func(key string) (*uuid.UUID, bool) {
+		v := r.URL.Query().Get(key)
+		if v == "" {
+			return nil, true
+		}
+		id, err := uuid.Parse(v)
+		if err != nil {
+			httpx.WriteError(w, r, httpx.NewBadRequest("INVALID_ID", key+" must be a UUID."))
+			return nil, false
+		}
+		return &id, true
+	}
+	party, ok := parse("party_id")
+	if !ok {
+		return
+	}
+	doc, ok := parse("sales_document_id")
+	if !ok {
+		return
+	}
+	rows, err := h.svc.ListActivity(r.Context(), principal(r), party, doc)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"activity": rows})
 }

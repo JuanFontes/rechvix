@@ -3,6 +3,7 @@ import type { Db } from "../db/types";
 import { dueSales, getOrg, kvSet, mapGet, markState, resetSyncing, saveProgress } from "../db/repo";
 import { pullMaster } from "./pull";
 import { pushPayments } from "./payments";
+import { pushReminders } from "./reminders";
 import { pushItems, pushParties } from "./push";
 import { NotReadyError, runSale, type Resolver } from "./saga";
 
@@ -92,6 +93,13 @@ export class SyncEngine {
       res.failed += pay.failed;
     } catch (e) {
       if (!this.classify(e, res)) res.message = res.message ?? `Couldn't send payments: ${e instanceof Error ? e.message : "unknown error"}`;
+      return res;
+    }
+
+    try {
+      await pushReminders(this.api, this.db);
+    } catch (e) {
+      if (!this.classify(e, res)) res.message = res.message ?? `Couldn't send reminder history: ${e instanceof Error ? e.message : "unknown error"}`;
       return res;
     }
 
