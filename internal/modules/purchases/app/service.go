@@ -398,7 +398,7 @@ func (s *Service) FinalizeDocument(ctx context.Context, principal permissions.Pr
 	var doc *domain.Document
 	err = s.pool.RunScoped(ctx, principal.OrganisationID, func(ctx context.Context) error {
 		var err error
-		doc, err = s.documents.GetByID(ctx, principal.OrganisationID, documentID)
+		doc, err = s.documents.GetForUpdate(ctx, principal.OrganisationID, documentID)
 		if err != nil {
 			return err
 		}
@@ -631,7 +631,7 @@ func (s *Service) CancelDocument(ctx context.Context, principal permissions.Prin
 	var doc *domain.Document
 	err = s.pool.RunScoped(ctx, principal.OrganisationID, func(ctx context.Context) error {
 		var err error
-		doc, err = s.documents.GetByID(ctx, principal.OrganisationID, documentID)
+		doc, err = s.documents.GetForUpdate(ctx, principal.OrganisationID, documentID)
 		if err != nil {
 			return err
 		}

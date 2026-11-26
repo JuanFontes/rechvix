@@ -53,10 +53,14 @@ const documentCols = `id, organisation_id, branch_id, warehouse_id, supplier_par
 	currency_code, COALESCE(notes, ''), tax_document_id, created_by, created_at, updated_at, finalized_at,
 	COALESCE((SELECT sum(l.line_total_amount) FROM purchase_document_lines l WHERE l.purchase_document_id = purchase_documents.id), 0)`
 
+const documentByID = `SELECT ` + documentCols + ` FROM purchase_documents WHERE organisation_id = $1 AND id = $2`
+
 func (r *DocumentRepo) GetByID(ctx context.Context, orgID, id uuid.UUID) (*domain.Document, error) {
-	q := fmt.Sprintf(`SELECT %s FROM purchase_documents WHERE organisation_id = $1 AND id = $2`, documentCols)
-	row := r.pool.Q(ctx).QueryRow(ctx, q, orgID, id)
-	return scanDocument(row)
+	return scanDocument(r.pool.Q(ctx).QueryRow(ctx, documentByID, orgID, id))
+}
+
+func (r *DocumentRepo) GetForUpdate(ctx context.Context, orgID, id uuid.UUID) (*domain.Document, error) {
+	return scanDocument(r.pool.Q(ctx).QueryRow(ctx, documentByID+` FOR NO KEY UPDATE`, orgID, id))
 }
 
 func (r *DocumentRepo) ListByOrganisation(ctx context.Context, orgID uuid.UUID, documentType *domain.DocumentType, legalEntityIDs []uuid.UUID) ([]*domain.Document, error) {

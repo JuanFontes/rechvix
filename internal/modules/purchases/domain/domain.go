@@ -139,6 +139,8 @@ type DocumentLine struct {
 type DocumentRepository interface {
 	Create(ctx context.Context, d *Document) error
 	GetByID(ctx context.Context, orgID, id uuid.UUID) (*Document, error)
+	// GetForUpdate serializes status transitions on this document until the transaction ends.
+	GetForUpdate(ctx context.Context, orgID, id uuid.UUID) (*Document, error)
 	// legalEntityIDs is a company filter: nil means no restriction (every
 	// company), a non-nil (possibly empty) slice restricts to exactly
 	// those legal entities — see permissions.ResolveLegalEntityFilter.
