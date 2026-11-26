@@ -620,9 +620,17 @@ func (r *Repo) PaymentModes(ctx context.Context, f domain.Filter) ([]domain.Paym
 
 // CashFlow totals customer receipts (not reversed) and supplier payments by calendar month. Receipts are attributed to a company
 // through the invoice they paid, as in PaymentModes. A supplier payment has no company, so when the caller is limited to some
-// companies the Paid column is left empty rather than showing a figure that includes other companies.
+// companies (and the organisation has more than one) the Paid column is left empty rather than showing a figure that includes other companies.
 func (r *Repo) CashFlow(ctx context.Context, f domain.Filter) ([]domain.CashFlowRow, error) {
 	scoped := len(f.LegalEntityIDs) > 0
+	if scoped {
+		// With a single company every supplier payment belongs to it, so nothing needs leaving out.
+		var companies int
+		if err := r.pool.Q(ctx).QueryRow(ctx, `SELECT COUNT(*) FROM legal_entities WHERE organisation_id = $1`, f.OrganisationID).Scan(&companies); err != nil {
+			return nil, fmt.Errorf("reporting: cash flow company count: %w", err)
+		}
+		scoped = companies != 1
+	}
 	rw := newWhere(f.OrganisationID, "rc")
 	rw.addRange("rc.received_at", f.From, f.To)
 	rw.addOptionalUUIDs("sd.legal_entity_id", f.LegalEntityIDs)
