@@ -233,6 +233,24 @@ func (s *Service) PaymentModes(ctx context.Context, principal permissions.Princi
 	return out, err
 }
 
+// CashFlow reports money received and paid out per calendar month.
+func (s *Service) CashFlow(ctx context.Context, principal permissions.Principal, f domain.Filter) ([]domain.CashFlowRow, error) {
+	if err := s.view(ctx, principal); err != nil {
+		return nil, err
+	}
+	f, sees, err := s.resolvedFilter(ctx, principal, f)
+	if err != nil || !sees {
+		return nil, err
+	}
+	var out []domain.CashFlowRow
+	err = s.pool.RunScoped(ctx, principal.OrganisationID, func(ctx context.Context) error {
+		var err error
+		out, err = s.repo.CashFlow(ctx, scoped(principal, f))
+		return err
+	})
+	return out, err
+}
+
 func (s *Service) StockMovements(ctx context.Context, principal permissions.Principal, f domain.Filter) ([]domain.StockMovementRow, error) {
 	if err := s.view(ctx, principal); err != nil {
 		return nil, err

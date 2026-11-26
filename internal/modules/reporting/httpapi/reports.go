@@ -178,6 +178,24 @@ func (h *Handlers) paymentModes(w http.ResponseWriter, r *http.Request) {
 	writeTable(w, r, t)
 }
 
+func (h *Handlers) cashFlow(w http.ResponseWriter, r *http.Request) {
+	f, err := parseFilter(r)
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+	rows, err := h.svc.CashFlow(r.Context(), principal(r), f)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	t := export.Table{Title: "Cash Flow", Headers: []string{"Month", "Received", "Paid", "Net"}}
+	for _, m := range rows {
+		t.Rows = append(t.Rows, []string{m.Month, m.Received, m.Paid, m.Net})
+	}
+	writeTable(w, r, t)
+}
+
 func (h *Handlers) stockMovements(w http.ResponseWriter, r *http.Request) {
 	f, err := parseFilter(r)
 	if err != nil {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import ReactECharts from "echarts-for-react";
 import styles from "./DashboardPage.module.css";
-import { DashboardFollowUps, PaymentModesPanel } from "../components/DashboardFollowUps";
+import { CashFlowPanel, DashboardFollowUps, PaymentModesPanel } from "../components/DashboardFollowUps";
 import { QuickAccess } from "../components/QuickAccess";
 import { SetupChecklist } from "../components/SetupChecklist";
 import { api } from "../lib/api-client";
@@ -511,6 +511,7 @@ export function DashboardPage() {
       </div>
 
       <PaymentModesPanel days={days} legalEntityId={org.legalEntity?.ID} currency={currency} />
+      <CashFlowPanel legalEntityId={org.legalEntity?.ID} currency={currency} />
 
       <DashboardFollowUps legalEntityId={org.legalEntity?.ID} />
 

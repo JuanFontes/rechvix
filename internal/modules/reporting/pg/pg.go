@@ -10,6 +10,7 @@ package pg
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -615,6 +616,90 @@ func (r *Repo) PaymentModes(ctx context.Context, f domain.Filter) ([]domain.Paym
 		out = append(out, m)
 	}
 	return out, rows.Err()
+}
+
+// CashFlow totals customer receipts (not reversed) and supplier payments by calendar month. Receipts are attributed to a company
+// through the invoice they paid, as in PaymentModes. A supplier payment has no company, so when the caller is limited to some
+// companies the Paid column is left empty rather than showing a figure that includes other companies.
+func (r *Repo) CashFlow(ctx context.Context, f domain.Filter) ([]domain.CashFlowRow, error) {
+	scoped := len(f.LegalEntityIDs) > 0
+	rw := newWhere(f.OrganisationID, "rc")
+	rw.addRange("rc.received_at", f.From, f.To)
+	rw.addOptionalUUIDs("sd.legal_entity_id", f.LegalEntityIDs)
+	recv := map[string]decimal.Decimal{}
+	q := fmt.Sprintf(`
+		SELECT to_char(date_trunc('month', rc.received_at), 'YYYY-MM'), COALESCE(SUM(rc.amount), 0)
+		FROM receipts rc LEFT JOIN sales_documents sd ON sd.id = rc.sales_document_id
+		WHERE rc.organisation_id = $1 AND rc.reversed_at IS NULL %s
+		GROUP BY 1`, condAppend(rw))
+	rows, err := r.pool.Q(ctx).Query(ctx, q, rw.args...)
+	if err != nil {
+		return nil, fmt.Errorf("reporting: cash flow receipts query: %w", err)
+	}
+	for rows.Next() {
+		var m string
+		var a decimal.Decimal
+		if err := rows.Scan(&m, &a); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("reporting: scanning cash flow receipt row: %w", err)
+		}
+		recv[m] = a
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	paid := map[string]decimal.Decimal{}
+	if !scoped {
+		pw := newWhere(f.OrganisationID, "pm")
+		pw.addRange("pm.paid_at", f.From, f.To)
+		pq := fmt.Sprintf(`
+			SELECT to_char(date_trunc('month', pm.paid_at), 'YYYY-MM'), COALESCE(SUM(pm.amount), 0)
+			FROM payments pm
+			WHERE pm.organisation_id = $1 %s
+			GROUP BY 1`, condAppend(pw))
+		prows, err := r.pool.Q(ctx).Query(ctx, pq, pw.args...)
+		if err != nil {
+			return nil, fmt.Errorf("reporting: cash flow payments query: %w", err)
+		}
+		for prows.Next() {
+			var m string
+			var a decimal.Decimal
+			if err := prows.Scan(&m, &a); err != nil {
+				prows.Close()
+				return nil, fmt.Errorf("reporting: scanning cash flow payment row: %w", err)
+			}
+			paid[m] = a
+		}
+		prows.Close()
+		if err := prows.Err(); err != nil {
+			return nil, err
+		}
+	}
+	months := map[string]struct{}{}
+	for m := range recv {
+		months[m] = struct{}{}
+	}
+	for m := range paid {
+		months[m] = struct{}{}
+	}
+	keys := make([]string, 0, len(months))
+	for m := range months {
+		keys = append(keys, m)
+	}
+	sort.Strings(keys)
+	out := make([]domain.CashFlowRow, 0, len(keys))
+	for _, m := range keys {
+		row := domain.CashFlowRow{Month: m, Received: recv[m].StringFixed(2)}
+		if scoped {
+			row.Net = recv[m].StringFixed(2)
+		} else {
+			row.Paid = paid[m].StringFixed(2)
+			row.Net = recv[m].Sub(paid[m]).StringFixed(2)
+		}
+		out = append(out, row)
+	}
+	return out, nil
 }
 
 func (r *Repo) StockMovements(ctx context.Context, f domain.Filter) ([]domain.StockMovementRow, error) {

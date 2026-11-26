@@ -2692,6 +2692,18 @@ paths:
       responses:
         "200": { description: "Table with columns Method, Receipts, Amount.", content: { application/json: { schema: { type: object } } } }
 
+  /reports/accounting/cash-flow:
+    get:
+      tags: [Reports]
+      summary: Money received from customers and paid to suppliers, per calendar month.
+      description: Receipts that were reversed are left out. Supplier payments belong to no single company, so for a caller limited to some companies the Paid column is empty.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: legal_entity_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: "Table with columns Month, Received, Paid, Net.", content: { application/json: { schema: { type: object } } } }
+
 components:
   parameters:
     ReportFilterFrom:
