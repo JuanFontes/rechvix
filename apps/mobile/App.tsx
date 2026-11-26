@@ -105,7 +105,7 @@ function Shell() {
     : sale ? <SaleDetail id={sale} onClose={() => setSale(null)} goSell={() => { setSale(null); setTab("sell"); }} openCustomer={openLedger} />
     : ledger ? <CustomerLedgerScreen partyId={ledger} onBack={() => setLedger(null)} openSale={(id) => { setLedger(null); setSale(id); }} />
     : customers ? <Customers onBack={() => setCustomers(false)} openEditor={setCustEditor} />
-    : tab === "home" ? <Home go={(t) => go(t)} open={setSale} addItem={() => setItemEditor(null)} addCustomer={() => setCustEditor(null)} />
+    : tab === "home" ? <Home go={(t) => go(t)} open={setSale} openCustomer={setLedger} addItem={() => setItemEditor(null)} addCustomer={() => setCustEditor(null)} />
     : tab === "sell" ? <Sell onDone={(id) => { setTab("sales"); setSale(id); }} addItem={() => setItemEditor(null)} />
     : tab === "sales" ? <Sales open={setSale} />
     : tab === "dues" ? <Dues open={setLedger} />
