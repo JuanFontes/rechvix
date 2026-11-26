@@ -23,7 +23,7 @@ const dump = async (db: Awaited<ReturnType<typeof populated>>) => Object.fromEnt
 
 test("a backup holds every record, including payments, quotations, credit notes and low-stock levels", async () => {
   const b = await buildBackup(await populated());
-  assert.equal(b.format, 2); assert.equal(b.schema, 7);
+  assert.equal(b.format, 2); assert.equal(b.schema, 8);
   for (const t of ["payments", "quotes", "credit_notes", "item_low", "sales", "parties", "products"] as const) assert.ok(b.tables[t]!.length > 0, `${t} is in the backup`);
   assert.ok(!b.kv.some((r) => r.key === "server"), "the server link is not part of a backup");
 });

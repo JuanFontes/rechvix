@@ -145,6 +145,16 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE reminders ADD COLUMN synced_status TEXT;
   `,
+  // v8: expenses. A phone-recorded cost (rent, fuel, a courier). It is uploaded to the server as one manual journal carrying a client_ref, so a
+  // retried upload can never post the money twice. Purely additive.
+  `
+  CREATE TABLE expenses (
+    id TEXT PRIMARY KEY, at INTEGER NOT NULL, category_code TEXT NOT NULL, category_name TEXT NOT NULL, amount TEXT NOT NULL,
+    method TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', state TEXT NOT NULL DEFAULT 'pending',
+    server_journal_id TEXT, error TEXT, attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL
+  );
+  CREATE INDEX expenses_at ON expenses(at);
+  `,
 ];
 
 export async function migrate(db: Db): Promise<void> {

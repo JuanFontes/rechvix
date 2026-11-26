@@ -230,6 +230,8 @@ type JournalRequest struct {
 	Description    string
 	CreatedBy      uuid.UUID
 	Lines          []JournalLineRequest
+	// ClientRef makes a retried post safe: the same value returns the journal already booked (the second return value of PostIdempotent says so).
+	ClientRef string
 	// ReversedJournalID is set only by ReverseJournalForSourceTx — a
 	// direct caller of Post/PostTx has no reversal to link, since
 	// reversing IS the dedicated operation for that (see its own doc
@@ -242,19 +244,35 @@ type JournalRequest struct {
 // transaction) for a caller not already inside a RunScoped block — e.g. a
 // manual adjustment journal posted directly from an accounting screen.
 func (s *Service) Post(ctx context.Context, principal permissions.Principal, req JournalRequest) (*domain.Journal, error) {
+	j, _, err := s.PostIdempotent(ctx, principal, req)
+	return j, err
+}
+
+// PostIdempotent is Post, but when req.ClientRef was already used it returns the journal that was booked then (existing = true) and
+// posts nothing, so a dropped connection can be retried without posting the same money twice.
+func (s *Service) PostIdempotent(ctx context.Context, principal permissions.Principal, req JournalRequest) (j *domain.Journal, existing bool, err error) {
 	if err := s.post(ctx, principal); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	var j *domain.Journal
-	err := s.pool.RunScoped(ctx, req.OrganisationID, func(ctx context.Context) error {
-		var err error
-		j, err = s.doPost(ctx, principal, req)
-		return err
+	err = s.pool.RunScoped(ctx, req.OrganisationID, func(ctx context.Context) error {
+		if req.ClientRef != "" {
+			found, ferr := s.journals.GetByClientRef(ctx, req.OrganisationID, req.ClientRef)
+			if ferr == nil {
+				j, existing = found, true
+				return nil
+			}
+			if !errors.Is(ferr, domain.ErrNotFound) {
+				return ferr
+			}
+		}
+		var perr error
+		j, perr = s.doPost(ctx, principal, req)
+		return perr
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return j, nil
+	return j, existing, nil
 }
 
 // PostTx is the nested-transaction-safe entry point — the same shape as
@@ -333,7 +351,7 @@ func (s *Service) doPost(ctx context.Context, principal permissions.Principal, r
 	j := &domain.Journal{
 		ID: id, OrganisationID: req.OrganisationID, SourceType: req.SourceType, SourceID: req.SourceID,
 		JournalDate: journalDate, Description: req.Description, ReversedJournalID: req.ReversedJournalID,
-		CreatedBy: req.CreatedBy, CreatedAt: now,
+		CreatedBy: req.CreatedBy, CreatedAt: now, ClientRef: req.ClientRef,
 	}
 	if err := s.journals.Create(ctx, j); err != nil {
 		return nil, err

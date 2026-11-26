@@ -83,6 +83,8 @@ type Journal struct {
 	ReversedJournalID *uuid.UUID
 	CreatedBy         uuid.UUID
 	CreatedAt         time.Time
+	// ClientRef is the caller's own id for this journal (optional). A repeated post with the same value returns the journal already booked.
+	ClientRef string
 }
 
 // JournalLine is a journal_lines row. Exactly one of Debit/Credit is
@@ -246,6 +248,8 @@ type AccountRepository interface {
 type JournalRepository interface {
 	Create(ctx context.Context, j *Journal) error
 	GetByID(ctx context.Context, orgID, id uuid.UUID) (*Journal, error)
+	// GetByClientRef returns the journal posted with this client_ref, or ErrNotFound.
+	GetByClientRef(ctx context.Context, orgID uuid.UUID, clientRef string) (*Journal, error)
 	ListByOrganisation(ctx context.Context, orgID uuid.UUID, limit int) ([]*Journal, error)
 	// GetBySource returns the most recent journal posted for
 	// (sourceType, sourceID) — the one a reversal needs to reverse. In

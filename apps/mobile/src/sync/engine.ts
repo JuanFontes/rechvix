@@ -4,6 +4,7 @@ import { dueSales, getOrg, kvSet, mapGet, markState, resetSyncing, saveProgress 
 import { pullMaster } from "./pull";
 import { pushPayments } from "./payments";
 import { pushReminders } from "./reminders";
+import { pushExpenses } from "./expenses";
 import { pushItems, pushParties } from "./push";
 import { NotReadyError, runSale, type Resolver } from "./saga";
 
@@ -93,6 +94,14 @@ export class SyncEngine {
       res.failed += pay.failed;
     } catch (e) {
       if (!this.classify(e, res)) res.message = res.message ?? `Couldn't send payments: ${e instanceof Error ? e.message : "unknown error"}`;
+      return res;
+    }
+
+    try {
+      const ex = await pushExpenses(this.api, this.db);
+      res.failed += ex.failed;
+    } catch (e) {
+      if (!this.classify(e, res)) res.message = res.message ?? `Couldn't send expenses: ${e instanceof Error ? e.message : "unknown error"}`;
       return res;
     }
 

@@ -1048,3 +1048,47 @@ func TestAccounting_Ageing_BackdatedReceiptStillReducesTheBalance(t *testing.T) 
 		t.Fatalf("ageing total = %s, want %s (invoice total less the 300 received, whatever its date)", b.Total.Decimal(), want)
 	}
 }
+
+// A retried manual expense books once: the same client_ref returns the journal already posted instead of posting the money again,
+// a different client_ref is a new expense, and a post with no client_ref behaves as before.
+func TestAccounting_ManualExpense_ClientRefMakesRetriesSafe(t *testing.T) {
+	ctx := context.Background()
+	_, _, accountingSvc, _ := newTestAccountingServices(t)
+	fx := setupAccountingFixture(t, ctx, accountingSvc)
+	post := func(ref, amount string) (*accountingdomain.Journal, bool) {
+		t.Helper()
+		j, existing, err := accountingSvc.PostIdempotent(ctx, fx.Principal, accountingapp.JournalRequest{
+			OrganisationID: fx.Principal.OrganisationID, SourceType: "manual_expense", JournalDate: time.Now(),
+			Description: "Courier", CreatedBy: fx.Principal.UserID, ClientRef: ref,
+			Lines: []accountingapp.JournalLineRequest{
+				{AccountCode: accountingdomain.CodePurchases, Debit: mustDecimal(t, amount), Description: "Courier"},
+				{AccountCode: accountingdomain.CodeCash, Credit: mustDecimal(t, amount), Description: "Courier"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("PostIdempotent(%q): %v", ref, err)
+		}
+		return j, existing
+	}
+	first, existing := post("mobile:exp:1", "250.00")
+	if existing {
+		t.Fatal("the first post must create a journal")
+	}
+	again, existing := post("mobile:exp:1", "250.00")
+	if !existing || again.ID != first.ID {
+		t.Fatalf("a retry must return the first journal (existing=%v, %v vs %v)", existing, again.ID, first.ID)
+	}
+	other, existing := post("mobile:exp:2", "250.00")
+	if existing || other.ID == first.ID {
+		t.Fatal("a different client_ref is a different expense")
+	}
+	post("", "10.00")
+	post("", "10.00") // no client_ref: not deduplicated, as before
+	entries, err := accountingSvc.ListExpenseEntries(ctx, fx.Principal, 50)
+	if err != nil {
+		t.Fatalf("ListExpenseEntries: %v", err)
+	}
+	if len(entries) != 4 {
+		t.Fatalf("%d expense entries, want 4 (250 once, 250 again under a new ref, and two unreferenced 10s)", len(entries))
+	}
+}

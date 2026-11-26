@@ -39,6 +39,12 @@ export async function pullMaster(api: Api, db: Db, now: () => number = Date.now)
     for (const p of rows) unitByProduct.set(p.ID, p.BaseUOMID);
     if (rows.length < PAGE) break;
   }
+  // Expense categories: the server's active expense accounts. A failure here must never stop the catalogue from syncing.
+  try {
+    const accts = await api.get<{ Code: string; Name: string; AccountType: string; IsActive: boolean }[] | null>("/accounting/accounts");
+    const cats = (accts ?? []).filter((a) => a.AccountType === "EXPENSE" && a.IsActive).map((a) => ({ code: a.Code, name: a.Name }));
+    if (cats.length) await (await import("../db/repo")).setExpenseCategories(db, cats);
+  } catch { /* keep the categories already stored */ }
   let products = 0;
   for (const l of lookup) {
     const unit = unitByProduct.get(l.ProductID);

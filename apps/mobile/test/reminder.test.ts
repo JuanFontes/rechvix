@@ -72,7 +72,7 @@ test("statement: running balance, cancelled invoices skipped, closing balance ma
 
 test("reminder history is stored per invoice with an honest status, and old rows read as 'share opened'", async () => {
   const fresh = memoryDb(); await migrate(fresh);
-  assert.equal((await fresh.first<{ user_version: number }>("PRAGMA user_version"))!.user_version, 7);
+  assert.equal((await fresh.first<{ user_version: number }>("PRAGMA user_version"))!.user_version, 8);
   await fresh.run("INSERT INTO reminders(party_id,at,channel) VALUES('c1', 5, 'whatsapp')");
   assert.equal(statusOf((await remindersFor(fresh, "c1"))[0]!.status), "share_opened", "a pre-v6 style row defaults to share_opened");
   const id = await addReminder(fresh, "c1", 10, "pdf", { saleLocalId: "s1", status: "cancelled", withPdf: true, outstanding: "600.00", message: "hi" });

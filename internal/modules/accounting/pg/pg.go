@@ -128,10 +128,10 @@ func NewJournalRepo(pool *database.Pool) *JournalRepo { return &JournalRepo{pool
 
 func (r *JournalRepo) Create(ctx context.Context, j *domain.Journal) error {
 	const q = `
-		INSERT INTO journals (id, organisation_id, source_type, source_id, journal_date, description, reversed_journal_id, created_by, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
+		INSERT INTO journals (id, organisation_id, source_type, source_id, journal_date, description, reversed_journal_id, created_by, created_at, client_ref)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`
 	_, err := r.pool.Q(ctx).Exec(ctx, q, j.ID, j.OrganisationID, j.SourceType, j.SourceID, j.JournalDate,
-		nullIfEmpty(j.Description), j.ReversedJournalID, j.CreatedBy, j.CreatedAt)
+		nullIfEmpty(j.Description), j.ReversedJournalID, j.CreatedBy, j.CreatedAt, nullIfEmpty(j.ClientRef))
 	if err != nil {
 		return fmt.Errorf("accounting: inserting journal: %w", err)
 	}
@@ -155,6 +155,11 @@ func scanJournal(row pgx.Row) (*domain.Journal, error) {
 func (r *JournalRepo) GetByID(ctx context.Context, orgID, id uuid.UUID) (*domain.Journal, error) {
 	q := fmt.Sprintf(`SELECT %s FROM journals WHERE organisation_id = $1 AND id = $2`, journalCols)
 	return scanJournal(r.pool.Q(ctx).QueryRow(ctx, q, orgID, id))
+}
+
+func (r *JournalRepo) GetByClientRef(ctx context.Context, orgID uuid.UUID, clientRef string) (*domain.Journal, error) {
+	q := fmt.Sprintf(`SELECT %s FROM journals WHERE organisation_id = $1 AND client_ref = $2`, journalCols)
+	return scanJournal(r.pool.Q(ctx).QueryRow(ctx, q, orgID, clientRef))
 }
 
 func (r *JournalRepo) GetBySource(ctx context.Context, orgID uuid.UUID, sourceType string, sourceID uuid.UUID) (*domain.Journal, error) {

@@ -5,7 +5,7 @@
  *
  *  Run it against a throwaway server. It never touches anything but the server it is pointed at, and every name below is made up. */
 import { Api } from "../src/api/client";
-import { addReminder, createItem, createParty, insertPayments, insertSale, takeInvoiceNumber } from "../src/db/repo";
+import { addExpense, addReminder, createItem, createParty, insertPayments, insertSale, takeInvoiceNumber } from "../src/db/repo";
 import { migrate } from "../src/db/schema";
 import { calcInvoice, snapshot } from "../src/lib/tax";
 import { SyncEngine } from "../src/sync/engine";
@@ -84,6 +84,10 @@ async function main() {
   await addReminder(db, "deshmukh", ago(5), "whatsapp", { status: "share_opened", withPdf: true, outstanding: "1650.00" });
   await addReminder(db, "patil", ago(3), "manual", { status: "marked_sent", withPdf: false, outstanding: "1052.50" });
 
+  // Expenses (rent, courier, fuel, electricity). They are queued now and uploaded by the sync below.
+  const spend: [number, string, "CASH" | "BANK", string][] = [[40, "18000.00", "BANK", "Shop rent"], [26, "2400.00", "CASH", "Courier and freight"], [12, "950.00", "CASH", "Fuel"], [3, "1200.00", "BANK", "Electricity"]];
+  let e = 0;
+  for (const [d, amount, method, note] of spend) await addExpense(db, { id: `exp-${++e}`, at: ago(d), category: { code: "5990", name: "General expenses" }, amount, method, note }, ago(d));
   const eng = new SyncEngine(api, db);
   for (let round = 0; round < 3; round++) {
     const r = await eng.syncNow();
@@ -92,6 +96,13 @@ async function main() {
   }
   const states = await db.all<{ state: string; n: number }>("SELECT state, COUNT(*) AS n FROM sales GROUP BY state");
   console.log("sales by state:", JSON.stringify(states));
+  // Prove an upload is safe to repeat: pretend every expense was never confirmed, sync again, and count what is in the books.
+  const before = (await api.get<{ expenses: unknown[] }>("/accounting/expenses?limit=200")).expenses.length;
+  await db.run("UPDATE expenses SET state='pending', server_journal_id=NULL");
+  await eng.syncNow();
+  const after = (await api.get<{ expenses: unknown[] }>("/accounting/expenses?limit=200")).expenses.length;
+  console.log(`expenses in the books: ${before} after the first upload, ${after} after uploading the same four again`);
+  if (before !== spend.length || after !== before) throw new Error("expense upload is not idempotent");
   const act = await api.get<{ activity: unknown[] }>("/reminders/activity");
   console.log("reminder history rows on the server:", act.activity.length);
 }

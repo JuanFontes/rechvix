@@ -435,3 +435,25 @@ export const lowStockItems = (db: Db, limit = 500): Promise<Product[]> =>
      WHERE archived=0 AND is_custom=0 AND stock IS NOT NULL
        AND CAST(stock AS REAL) <= COALESCE((SELECT CAST(low_at AS REAL) FROM item_low WHERE sku = products.sku), 5)
      ORDER BY CAST(stock AS REAL) LIMIT ?`, [limit]);
+
+// ---------------------------------------------------------------------------------------------------------------- expenses (v8)
+export type ExpenseState = "pending" | "synced" | "failed";
+export interface Expense { id: string; at: number; category_code: string; category_name: string; amount: string; method: "CASH" | "BANK"; note: string; state: ExpenseState; server_journal_id: string | null; error: string | null; attempts: number; created_at: number }
+export interface ExpenseCategory { code: string; name: string }
+export const addExpense = (db: Db, e: { id: string; at: number; category: ExpenseCategory; amount: string; method: "CASH" | "BANK"; note: string }, now: number): Promise<void> =>
+  db.run("INSERT INTO expenses(id,at,category_code,category_name,amount,method,note,created_at) VALUES(?,?,?,?,?,?,?,?)", [e.id, e.at, e.category.code, e.category.name, e.amount, e.method, e.note, now]);
+export const listExpenses = (db: Db): Promise<Expense[]> => db.all<Expense>("SELECT * FROM expenses ORDER BY at DESC, created_at DESC LIMIT 1000");
+export const pendingExpenses = (db: Db): Promise<Expense[]> => db.all<Expense>("SELECT * FROM expenses WHERE state='pending' ORDER BY created_at LIMIT 200");
+export const markExpenseSynced = (db: Db, id: string, journalId: string): Promise<void> => db.run("UPDATE expenses SET state='synced', server_journal_id=?, error=NULL WHERE id=?", [journalId, id]);
+export const markExpenseFailed = (db: Db, id: string, error: string, attempts: number): Promise<void> => db.run("UPDATE expenses SET state='failed', error=?, attempts=? WHERE id=?", [error, attempts, id]);
+/** Puts a refused expense back in the queue (after the person fixed what the server complained about). */
+export const retryExpense = (db: Db, id: string): Promise<void> => db.run("UPDATE expenses SET state='pending', error=NULL, attempts=0 WHERE id=? AND state='failed'", [id]);
+/** Only an expense the server has not seen can be removed; once it is in the books it is corrected there, never erased here. */
+export const deleteUnsyncedExpense = (db: Db, id: string): Promise<void> => db.run("DELETE FROM expenses WHERE id=? AND state<>'synced'", [id]);
+export const DEFAULT_EXPENSE_CATEGORIES: ExpenseCategory[] = [{ code: "5990", name: "General expenses" }];
+export async function getExpenseCategories(db: Db): Promise<ExpenseCategory[]> {
+  const raw = await kvGet(db, "expense_categories");
+  if (!raw) return DEFAULT_EXPENSE_CATEGORIES;
+  try { const v = JSON.parse(raw) as ExpenseCategory[]; return v.length ? v : DEFAULT_EXPENSE_CATEGORIES; } catch { return DEFAULT_EXPENSE_CATEGORIES; }
+}
+export const setExpenseCategories = (db: Db, list: ExpenseCategory[]): Promise<void> => kvSet(db, "expense_categories", JSON.stringify(list));

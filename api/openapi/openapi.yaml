@@ -2704,6 +2704,18 @@ paths:
       responses:
         "200": { description: "Table with columns Month, Received, Paid, Net.", content: { application/json: { schema: { type: object } } } }
 
+  /accounting/journals:
+    post:
+      tags: [Accounting]
+      summary: Post a balanced manual journal (the Expenses page and the phone app use it for expenses).
+      description: Every line is a debit or a credit and the totals must be equal. Send a client_ref (any string up to 100 characters, unique per journal you intend) to make a retry safe; posting the same client_ref again returns the journal already booked (HTTP 200) and posts nothing.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [source_type, lines], properties: { source_type: { type: string, example: manual_expense }, journal_date: { type: string, format: date-time }, description: { type: string }, client_ref: { type: string, maxLength: 100 }, lines: { type: array, items: { type: object, required: [account_code], properties: { account_code: { type: string }, party_id: { type: string, format: uuid }, debit: { type: string }, credit: { type: string }, description: { type: string } } } } } } } }
+      responses:
+        "201": { description: Journal posted., content: { application/json: { schema: { type: object } } } }
+        "200": { description: The journal already booked for this client_ref., content: { application/json: { schema: { type: object } } } }
+
   /reminders/activity:
     post:
       tags: [Reports]
