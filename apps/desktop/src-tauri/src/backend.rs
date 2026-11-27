@@ -162,26 +162,40 @@ fn ensure_writable_pg_install(paths: &AppPaths) -> Result<(), StartupError> {
     if pg_copy_complete(paths) {
         return Ok(());
     }
-    let mut cmd = Command::new("robocopy.exe");
-    cmd.arg(&paths.pg_install_source_dir)
-        .arg(&paths.pg_install_dir)
-        .arg("/E") // include subdirectories, including empty ones
-        .arg("/R:2").arg("/W:1") // don't hang retrying a locked file for the default 1M×30s
-        .arg("/MT:8") // multi-threaded — the thousands-of-small-files case this exists for
-        .arg("/NFL").arg("/NDL").arg("/NJH").arg("/NJS").arg("/NP") // quiet: only the exit code matters
-        .current_dir(&paths.data_dir); // never inherit a CWD under the packaged install_dir — see AppPaths::data_dir
-    no_window(&mut cmd);
-    let status = cmd.status().map_err(|e| {
-        StartupError::Initdb(format!("could not copy the bundled database into a writable location: {e}"))
-    })?;
-    // robocopy's exit code is a bitmask, not a plain 0/nonzero: 0-7 are
-    // all success/informational (files copied, some skipped because
-    // identical, etc.); 8+ means a real failure. This is standard
-    // robocopy behavior, not something to "fix" — checking `.success()`
-    // here would treat a completely normal run as an error.
-    let code = status.code().unwrap_or(-1);
-    if code >= 8 {
-        return Err(StartupError::Initdb(format!("robocopy exited with code {code}")));
+    // The first start right after installing is when this fails: the freshly installed files can still be locked (antivirus scanning a new
+    // 1,500-file folder, Windows finishing the install), and robocopy reports that as exit code 8 or more for the files it could not read.
+    // Seen on a real laptop: "robocopy exited with code 9", and the app only worked when the person closed and reopened it. So the copy is
+    // simply repeated (robocopy skips what already arrived), with robocopy's own output kept in logs\robocopy.log, and only a failure that
+    // survives several tries is reported.
+    const ATTEMPTS: u32 = 6;
+    let robocopy_log = paths.logs_dir.join("robocopy.log");
+    let mut last_code = -1;
+    for attempt in 1..=ATTEMPTS {
+        let mut cmd = Command::new("robocopy.exe");
+        cmd.arg(&paths.pg_install_source_dir)
+            .arg(&paths.pg_install_dir)
+            .arg("/E") // include subdirectories, including empty ones
+            .arg("/R:3").arg("/W:2") // retry a locked file a few times instead of the default 1M x 30s
+            .arg("/MT:8") // multi-threaded: the thousands-of-small-files case this exists for
+            .arg("/NFL").arg("/NDL").arg("/NJH").arg("/NJS").arg("/NP") // quiet: the exit code and the log below are what matter
+            .arg(format!("/LOG+:{}", robocopy_log.display()))
+            .current_dir(&paths.data_dir); // never inherit a CWD under the packaged install_dir: see AppPaths::data_dir
+        no_window(&mut cmd);
+        let status = cmd.status().map_err(|e| {
+            StartupError::Initdb(format!("could not copy the bundled database into a writable location: {e}"))
+        })?;
+        // robocopy's exit code is a bitmask, not a plain 0/nonzero: 0-7 are all success/informational (files copied, some skipped because
+        // identical, etc.); 8+ means some file failed. Checking `.success()` would treat a completely normal run as an error.
+        last_code = status.code().unwrap_or(-1);
+        if (0..8).contains(&last_code) {
+            break;
+        }
+        if attempt < ATTEMPTS {
+            std::thread::sleep(Duration::from_secs(2 * attempt as u64));
+        }
+    }
+    if !(0..8).contains(&last_code) {
+        return Err(StartupError::Initdb(format!("robocopy exited with code {last_code} after several tries")));
     }
     mark_pg_copy_complete(paths);
     Ok(())
