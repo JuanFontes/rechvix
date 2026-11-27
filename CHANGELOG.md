@@ -13,6 +13,16 @@
 
 # Changelog
 
+## 0.26.0
+
+- **Phone app 2.5.0: suppliers and purchases.** More > Suppliers & purchases: add a supplier, record a supplier bill (items, quantity, cost, the supplier's bill number, an optional amount paid now) and pay a supplier later. A bill puts its goods on the phone's shelf at once and counts as owed until paid. Each bill uploads as a draft carrying a `client_ref`, then its lines, then is finalized; a payment carries its own `client_ref`. A payment made with a bill waits until the bill is on the server. Proven against a real server, including a phone that loses all of its upload progress and asks again: still one bill, one set of lines, one payment. Phone database v9, included in backups. GST on supplier bills is not worked out on the phone (the bill is booked at the cost entered); record GST bills on the web.
+- **Safe-to-retry supplier bills and payments (migration 0071).** `POST /purchases/documents` and `POST /accounting/payments` accept a `client_ref`; repeating one returns the document or payment already booked (HTTP 200) instead of creating or booking it again. Reusing a `client_ref` for a different supplier, amount or document is refused.
+- **Fixed: the payables report listed nothing for a supplier you still owe.** It aged debits, which is right for a customer and wrong for a supplier, so a supplier billed more than paid disappeared. It now ages the bills and settles them with payments, oldest first. Affects Reports and Accounting > Payables on the web.
+- **Fixed: reports that end on a date left out that whole day** for timestamped records. Today's receipts and supplier payments were missing from "up to today" on the dashboard's Money in and out panel, the payment-mode split and the stock-movement report. A range now includes its last day in full.
+- **Phone: the sync banner counts every kind of waiting record.** It used to say "All synced" while expenses, customer payments, supplier bills or supplier payments were still waiting or refused.
+- **Phone: long forms scroll above the keyboard** (new supplier bill, pay supplier).
+- Migrations 0069 (reminder history), 0070 (expense `client_ref`) and 0071 are new for servers still on 0.25.0.
+
 ## 0.25.0
 
 - **Fixed-asset register** (Accounting > Fixed assets; migration 0067, `fixedassets` module). Add an asset with cost, value at end of life, useful life and straight-line or declining-balance depreciation; optionally book the purchase at the same time (bank, cash, accounts payable or opening balance). "Book depreciation" posts one journal per month for all assets (Dr 5800 Depreciation Expense, Cr 1590 Accumulated Depreciation), never doubles a month already booked and never takes an asset below its end-of-life value; the last straight-line month absorbs rounding. Selling or scrapping removes cost and accumulated depreciation and books the gain or loss to 5950, and needs depreciation up to the previous month first. The accounts 1500, 1590, 5800 and 5950 are created the first time they are needed, so existing organisations need no extra step. Period locks apply. Needs `accounting.view` / `accounting.post`.
