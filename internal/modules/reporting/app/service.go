@@ -233,6 +233,24 @@ func (s *Service) PaymentModes(ctx context.Context, principal permissions.Princi
 	return out, err
 }
 
+// CashFlow reports money received and paid out per calendar month.
+func (s *Service) CashFlow(ctx context.Context, principal permissions.Principal, f domain.Filter) ([]domain.CashFlowRow, error) {
+	if err := s.view(ctx, principal); err != nil {
+		return nil, err
+	}
+	f, sees, err := s.resolvedFilter(ctx, principal, f)
+	if err != nil || !sees {
+		return nil, err
+	}
+	var out []domain.CashFlowRow
+	err = s.pool.RunScoped(ctx, principal.OrganisationID, func(ctx context.Context) error {
+		var err error
+		out, err = s.repo.CashFlow(ctx, scoped(principal, f))
+		return err
+	})
+	return out, err
+}
+
 func (s *Service) StockMovements(ctx context.Context, principal permissions.Principal, f domain.Filter) ([]domain.StockMovementRow, error) {
 	if err := s.view(ctx, principal); err != nil {
 		return nil, err
@@ -283,7 +301,7 @@ func (s *Service) ReceivablesSummary(ctx context.Context, principal permissions.
 	if err != nil {
 		return nil, err
 	}
-	return s.ageingRows(ctx, principal, ids, asOf)
+	return s.ageingRows(ctx, principal, ids, asOf, false)
 }
 
 // ReceivablesDetailed is ReceivablesSummary plus each party's phone (for
@@ -354,13 +372,17 @@ func (s *Service) PayablesSummary(ctx context.Context, principal permissions.Pri
 	if err != nil {
 		return nil, err
 	}
-	return s.ageingRows(ctx, principal, ids, asOf)
+	return s.ageingRows(ctx, principal, ids, asOf, true)
 }
 
-func (s *Service) ageingRows(ctx context.Context, principal permissions.Principal, partyIDs []uuid.UUID, asOf time.Time) ([]domain.PartyOutstandingRow, error) {
+func (s *Service) ageingRows(ctx context.Context, principal permissions.Principal, partyIDs []uuid.UUID, asOf time.Time, payable bool) ([]domain.PartyOutstandingRow, error) {
 	out := make([]domain.PartyOutstandingRow, 0, len(partyIDs))
 	for _, id := range partyIDs {
-		bucket, err := s.accounting.GetAgeing(ctx, principal, id, asOf)
+		ageing := s.accounting.GetAgeing
+		if payable {
+			ageing = s.accounting.GetPayableAgeing
+		}
+		bucket, err := ageing(ctx, principal, id, asOf)
 		if err != nil {
 			return nil, fmt.Errorf("reporting: ageing for party %s: %w", id, err)
 		}

@@ -3,7 +3,10 @@ import type { Db } from "../db/types";
 import { dueSales, getOrg, kvSet, mapGet, markState, resetSyncing, saveProgress } from "../db/repo";
 import { pullMaster } from "./pull";
 import { pushPayments } from "./payments";
+import { pushReminders } from "./reminders";
+import { pushExpenses } from "./expenses";
 import { pushItems, pushParties } from "./push";
+import { pushPurchases, pushSuppliers } from "./purchases";
 import { NotReadyError, runSale, type Resolver } from "./saga";
 
 export interface SyncResult { pushed: number; failed: number; pulled: boolean; offline: boolean; authRequired: boolean; message?: string; paymentsPosted?: number; paymentsFailed?: number }
@@ -40,7 +43,8 @@ export class SyncEngine {
     try {
       const a = await pushParties(this.api, this.db, org);
       const b = await pushItems(this.api, this.db, org);
-      const problems = [...a.problems, ...b.problems];
+      const s = await pushSuppliers(this.api, this.db, org);
+      const problems = [...a.problems, ...b.problems, ...s.problems];
       if (problems.length) res.message = `${problems[0]}${problems.length > 1 ? ` (+${problems.length - 1} more)` : ""}`;
     } catch (e) {
       if (!this.classify(e, res)) res.message = `Couldn't upload your items and customers: ${e instanceof Error ? e.message : "unknown error"}`;
@@ -92,6 +96,29 @@ export class SyncEngine {
       res.failed += pay.failed;
     } catch (e) {
       if (!this.classify(e, res)) res.message = res.message ?? `Couldn't send payments: ${e instanceof Error ? e.message : "unknown error"}`;
+      return res;
+    }
+
+    try {
+      const ex = await pushExpenses(this.api, this.db);
+      res.failed += ex.failed;
+    } catch (e) {
+      if (!this.classify(e, res)) res.message = res.message ?? `Couldn't send expenses: ${e instanceof Error ? e.message : "unknown error"}`;
+      return res;
+    }
+
+    try {
+      const pur = await pushPurchases(this.api, this.db, org);
+      res.failed += pur.failed;
+    } catch (e) {
+      if (!this.classify(e, res)) res.message = res.message ?? `Couldn't send supplier bills: ${e instanceof Error ? e.message : "unknown error"}`;
+      return res;
+    }
+
+    try {
+      await pushReminders(this.api, this.db);
+    } catch (e) {
+      if (!this.classify(e, res)) res.message = res.message ?? `Couldn't send reminder history: ${e instanceof Error ? e.message : "unknown error"}`;
       return res;
     }
 

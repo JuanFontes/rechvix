@@ -94,6 +94,29 @@ fn append_log(path: &std::path::Path) -> Stdio {
         .unwrap_or_else(|_| Stdio::null())
 }
 
+/// Written inside the writable Postgres copy only once every file has been copied. "postgres.exe exists" is not proof of a complete copy: the copy is
+/// bulk and can be cut short (the app killed, the PC powered off, a locked file), and the file that decides "done" can arrive before the rest.
+/// With only that check, an interrupted first start left a folder that looked installed and made every later start fail ("cannot find the file
+/// specified" on initdb). With the marker a partial copy is simply finished on the next start (robocopy skips what is already identical).
+const PG_COPY_MARKER: &str = ".copy-complete";
+
+fn pg_copy_complete(paths: &AppPaths) -> bool {
+    paths.pg_install_dir.join(PG_COPY_MARKER).exists() && paths.pg_bin_dir().join(exe_name("postgres")).exists() && paths.pg_bin_dir().join(exe_name("initdb")).exists()
+}
+
+fn mark_pg_copy_complete(paths: &AppPaths) {
+    let _ = std::fs::write(paths.pg_install_dir.join(PG_COPY_MARKER), b"ok");
+}
+
+/// Written inside pgdata after `initdb` succeeded. `initdb` creates PG_VERSION early, so an interrupted run leaves a data folder that has PG_VERSION
+/// but is unusable, and `initdb` then refuses to run on it. A folder is treated as a real database when it has the marker, or `global/pg_control`
+/// (what every database from earlier versions has, and what `initdb` writes only when the cluster is actually usable).
+const INITDB_MARKER: &str = "rechvix-initdb.ok";
+
+fn pgdata_initialised(paths: &AppPaths) -> bool {
+    paths.pgdata_dir.join("PG_VERSION").exists() && (paths.pgdata_dir.join(INITDB_MARKER).exists() || paths.pgdata_dir.join("global").join("pg_control").exists())
+}
+
 /// Recursively copies `src` into `dst`, creating directories as needed.
 /// Hand-rolled rather than pulling in a crate for one call site — used as
 /// the non-Windows fallback only; Windows uses `robocopy` instead (see
@@ -136,7 +159,7 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
 /// there.
 #[cfg(windows)]
 fn ensure_writable_pg_install(paths: &AppPaths) -> Result<(), StartupError> {
-    if paths.pg_bin_dir().join(exe_name("postgres")).exists() {
+    if pg_copy_complete(paths) {
         return Ok(());
     }
     let mut cmd = Command::new("robocopy.exe");
@@ -160,16 +183,19 @@ fn ensure_writable_pg_install(paths: &AppPaths) -> Result<(), StartupError> {
     if code >= 8 {
         return Err(StartupError::Initdb(format!("robocopy exited with code {code}")));
     }
+    mark_pg_copy_complete(paths);
     Ok(())
 }
 
 #[cfg(not(windows))]
 fn ensure_writable_pg_install(paths: &AppPaths) -> Result<(), StartupError> {
-    if paths.pg_bin_dir().join(exe_name("postgres")).exists() {
+    if pg_copy_complete(paths) {
         return Ok(());
     }
     copy_dir_recursive(&paths.pg_install_source_dir, &paths.pg_install_dir)
-        .map_err(|e| StartupError::Initdb(format!("could not copy the bundled database into a writable location: {e}")))
+        .map_err(|e| StartupError::Initdb(format!("could not copy the bundled database into a writable location: {e}")))?;
+    mark_pg_copy_complete(paths);
+    Ok(())
 }
 
 fn exe_name(base: &str) -> String {
@@ -181,8 +207,12 @@ fn exe_name(base: &str) -> String {
 }
 
 fn run_initdb(paths: &AppPaths) -> Result<(), StartupError> {
-    if paths.pgdata_dir.join("PG_VERSION").exists() {
+    if pgdata_initialised(paths) {
         return Ok(()); // already initialised on a previous launch
+    }
+    // A data folder that exists but was never completed (an earlier first start was interrupted) holds no data yet; initdb refuses to run on it.
+    if paths.pgdata_dir.exists() {
+        let _ = std::fs::remove_dir_all(&paths.pgdata_dir);
     }
     let mut cmd = Command::new(paths.pg_bin("initdb"));
     cmd.arg("--pgdata").arg(&paths.pgdata_dir)
@@ -202,6 +232,7 @@ fn run_initdb(paths: &AppPaths) -> Result<(), StartupError> {
     if !status.success() {
         return Err(StartupError::Initdb(format!("initdb exited with {status}")));
     }
+    let _ = std::fs::write(paths.pgdata_dir.join(INITDB_MARKER), b"ok");
     Ok(())
 }
 
@@ -228,7 +259,9 @@ fn start_postgres(paths: &AppPaths, port: u16) -> Result<(), StartupError> {
         .arg("-D").arg(&paths.pgdata_dir)
         .arg("-l").arg(&paths.pg_log_file)
         .arg("-w").arg("-t").arg("30")
-        .arg("-o").arg(format!("-p {port} -h 127.0.0.1")) // never 0.0.0.0 — see the trust-auth note above
+        // One person on one PC: the server's pool is 20 connections, so 40 leaves room for migrations and backups, and 64MB of shared buffers is
+        // plenty. Postgres' defaults (100 connections, 128MB) only cost memory here. Command-line only; nothing in an existing database changes.
+        .arg("-o").arg(format!("-p {port} -h 127.0.0.1 -c max_connections=40 -c shared_buffers=64MB")) // never 0.0.0.0 — see the trust-auth note above
         // pg_ctl's OWN stdout/stderr, separate from `-l`'s target: pg_ctl
         // can fail before the server ever launches (bad argument, can't
         // find postgres.exe, the restricted-token dance itself failing),
@@ -281,11 +314,14 @@ fn write_runtime_info(paths: &AppPaths, http_port: u16, pg_port: u16, server_pid
 /// every run after) — give it a longer healthcheck budget rather than
 /// making every launch pay for the worst case.
 fn is_first_run(paths: &AppPaths) -> bool {
-    !paths.pgdata_dir.join("PG_VERSION").exists()
+    !pgdata_initialised(paths)
 }
 
 pub fn start_backend(paths: &AppPaths) -> Result<RunningBackend, StartupError> {
     let first_run = is_first_run(paths);
+    // runtime.json describes the backend that is running NOW. A copy left by the previous run names a port nothing listens on any more and
+    // would send anything that reads it (test tooling, support scripts) to the wrong place until this start overwrites it.
+    let _ = std::fs::remove_file(&paths.runtime_info_file);
 
     let pg_port = pick_free_port()?;
     let http_port = pick_free_port()?;

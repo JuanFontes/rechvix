@@ -17,6 +17,8 @@ import (
 // method fails this test: either gate it or add it here with a justification.
 var ungatedAllowlist = map[string]string{
 	"accounting/app/service.go ReverseJournalForSourceTx": "internal: called inside a gated caller's transaction",
+	"accounting/app/service.go Post":                      "thin wrapper: PostIdempotent (which checks accounting.post) does the work",
+	"purchases/app/service.go CreateDocument":             "thin wrapper: CreateDocumentIdempotent (which checks purchase.create) does the work",
 	"accounting/app/service.go PostTx":                    "internal: called inside a gated caller's transaction",
 	"identity/app/mfa.go DisableMFA":                      "self-service: acts only on the caller's own account",
 	"identity/app/mfa.go EnrollMFA":                       "self-service: acts only on the caller's own account",

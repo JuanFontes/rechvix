@@ -24,7 +24,7 @@ function Row({ icon, title, sub, onPress, tone }: { icon: IconName; title: strin
   );
 }
 
-export function More({ openCustomers, openProfile, openItems, openDesign, openQuotes, openDayBook, openReports }: { openCustomers: () => void; openProfile: () => void; openItems: () => void; openDesign: () => void; openQuotes: () => void; openDayBook: () => void; openReports: () => void }) {
+export function More({ openCustomers, openProfile, openItems, openDesign, openQuotes, openExpenses, openSuppliers, openDayBook, openReports }: { openCustomers: () => void; openProfile: () => void; openItems: () => void; openDesign: () => void; openQuotes: () => void; openExpenses: () => void; openSuppliers: () => void; openDayBook: () => void; openReports: () => void }) {
   const { changed, profile, saveProfile, linked, server, email, lastSyncAt, counts, syncNow, syncing, online, logout, disconnect, startLinking, db, businessName } = useApp();
   const c = usePalette();
   async function startRestore() {
@@ -65,6 +65,10 @@ export function More({ openCustomers, openProfile, openItems, openDesign, openQu
             <Row icon="calendar-outline" title="Day book" sub="Invoices, money in and credit notes by period" onPress={openDayBook} />
             <View style={{ height: 1, backgroundColor: c.border }} />
             <Row icon="document-text-outline" title="Quotations" sub="Offers you have sent; not counted as sales" onPress={openQuotes} />
+            <View style={{ height: 1, backgroundColor: c.border }} />
+            <Row icon="business-outline" title="Suppliers & purchases" sub="Bills you receive, what you owe, what you pay" onPress={openSuppliers} />
+            <View style={{ height: 1, backgroundColor: c.border }} />
+            <Row icon="wallet-outline" title="Expenses" sub="Rent, fuel, a courier: what the business spends" onPress={openExpenses} />
           </Card>
 
           <Label>Billing</Label>

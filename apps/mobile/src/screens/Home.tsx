@@ -10,6 +10,10 @@ import { groupPaymentsBySale } from "../db/repo";
 import { useApp } from "../state/app";
 import { fonts, radius, space, usePalette } from "../theme";
 import { Card, Chip, Icon, Label, Screen, Tap, type IconName } from "../ui/kit";
+import { owing, type CustomerLedger } from "../lib/receivables";
+import { useLedgers } from "../state/ledgers";
+import { PaymentSheet } from "./Dues";
+import { ReminderComposer } from "./Reminder";
 import { T } from "../ui/text";
 import { SaleRow, useSaleRows } from "./Sales";
 
@@ -46,8 +50,12 @@ function Trend({ points, currency }: { points: { dayStart: number; salesMinor: b
   );
 }
 
-export function Home({ go, open, addItem, addCustomer }: { go: (t: Go) => void; open: (id: string) => void; addItem: () => void; addCustomer: () => void }) {
-  const { businessName, currency, linked, counts, lastSyncAt, syncNow, online } = useApp();
+export function Home({ go, open, openCustomer, addItem, addCustomer }: { go: (t: Go) => void; open: (id: string) => void; openCustomer: (partyId: string) => void; addItem: () => void; addCustomer: () => void }) {
+  const { businessName, currency, linked, counts, lastSyncAt, syncNow, online, changed } = useApp();
+  const ledgers = useLedgers();
+  const collect = owing(ledgers).slice(0, 3);
+  const [reminding, setReminding] = useState<string | null>(null);
+  const [paying, setPaying] = useState<CustomerLedger | null>(null);
   const c = usePalette();
   const [range, setRange] = useState<Range>("today");
   const now = useNow();
@@ -91,6 +99,34 @@ export function Home({ go, open, addItem, addCustomer }: { go: (t: Go) => void; 
           <Stat icon="arrow-down-circle-outline" label="Collected" value={m(st.collectedMinor)} sub={`Money received ${r.long}`} tone={c.positive} onPress={() => go("dues")} />
           <Stat icon="wallet-outline" label="To collect" value={m(st.dueMinor)} sub={st.overdueMinor > 0n ? `${m(st.overdueMinor)} overdue` : st.dueMinor > 0n ? "Nothing overdue" : "All paid up"} tone={st.overdueMinor > 0n ? c.negative : st.dueMinor > 0n ? c.warning : c.positive} onPress={() => go("dues")} />
         </View>
+        {collect.length > 0 ? (
+          <View style={{ gap: 10 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Label>Collect today</Label>
+              <Tap label="See all customers who owe" onPress={() => go("dues")} haptic={false}><T v="small" color={c.accent} style={{ fontFamily: fonts.bodySemi }}>See all</T></Tap>
+            </View>
+            <Card style={{ padding: 0 }}>
+              {collect.map((l, i) => (
+                <View key={l.partyId} style={{ padding: space.md, gap: 8, borderTopWidth: i ? 1 : 0, borderTopColor: c.border }}>
+                  <Tap label={`${l.name} owes ${m(l.balance.owedMinor)}. Open account`} onPress={() => openCustomer(l.partyId)} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44 }}>
+                    <View style={{ flex: 1 }}><T v="strong" numberOfLines={1}>{l.name}</T>
+                      {l.balance.overdueMinor > 0n ? <T v="small" color={c.negative}>{m(l.balance.overdueMinor)} overdue</T> : <T v="small" muted>Not overdue yet</T>}</View>
+                    <T v="money" style={{ fontFamily: fonts.monoBold }}>{m(l.balance.owedMinor)}</T>
+                  </Tap>
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <Tap label={`Remind ${l.name}`} onPress={() => setReminding(l.partyId)} style={{ flex: 1, minHeight: 44, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Icon name="notifications-outline" size={18} color={c.accent} /><T v="small" color={c.accent} style={{ fontFamily: fonts.bodySemi }}>Remind</T>
+                    </Tap>
+                    <Tap label={`Record payment from ${l.name}`} onPress={() => setPaying(l)} style={{ flex: 1, minHeight: 44, borderRadius: radius.md, backgroundColor: c.accent, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Icon name="cash-outline" size={18} color="#fff" /><T v="small" color="#fff" style={{ fontFamily: fonts.bodySemi }}>Record payment</T>
+                    </Tap>
+                  </View>
+                </View>
+              ))}
+            </Card>
+          </View>
+        ) : null}
+
         {linked && serverDue > st.dueMinor ? <T v="small" muted>Across the whole business the server shows {m(serverDue)} outstanding, including invoices made on other devices.</T> : null}
 
         {st.trend.length > 1 ? (
@@ -157,6 +193,8 @@ export function Home({ go, open, addItem, addCustomer }: { go: (t: Go) => void; 
         </Card>
         {st.unsynced > 0 && linked ? <T v="small" muted>{st.unsynced} invoice{st.unsynced === 1 ? "" : "s"} on this phone aren&apos;t on the server yet, so the web dashboard won&apos;t include them until they sync.</T> : null}
       </ScrollView>
+      {reminding ? <ReminderComposer partyId={reminding} onClose={() => setReminding(null)} /> : null}
+      {paying ? <PaymentSheet ledger={paying} onClose={() => setPaying(null)} onSaved={() => { setPaying(null); changed(); }} /> : null}
     </Screen>
   );
 }

@@ -181,3 +181,59 @@ export function PaymentModesPanel({ days, legalEntityId, currency }: { days: num
     </section>
   );
 }
+
+/** Money received from customers against money paid to suppliers, month by month. Every bar is labelled, so colour is never the only signal. */
+export function CashFlowPanel({ legalEntityId, currency }: { legalEntityId: string | undefined; currency: string }) {
+  const end = new Date();
+  const from = isoDay(new Date(end.getFullYear(), end.getMonth() - 5, 1));
+  const to = isoDay(end);
+  const q = useReportTable(withLegalEntity(`/reports/accounting/cash-flow?format=json&from=${from}&to=${to}`, legalEntityId));
+  const rows = (q.data?.rows ?? []).map((r) => ({ month: r[0] ?? "", received: Number(r[1] ?? 0), paid: r[2] === "" || r[2] === undefined ? null : Number(r[2]), net: Number(r[3] ?? 0) }));
+  const max = rows.reduce((a, r) => Math.max(a, r.received, r.paid ?? 0), 0);
+  const symbol = currencySymbol(currency);
+  const money = (n: number) => `${symbol}${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n)}`;
+  const label = (ym: string) => new Date(`${ym}-01T00:00:00`).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+  const showPaid = rows.some((r) => r.paid !== null);
+
+  return (
+    <section className={styles.panel} aria-labelledby="cashflow-heading">
+      <h2 id="cashflow-heading">Money in and out</h2>
+      {q.isPending ? (
+        <div className={styles.skeleton} style={{ height: 96 }} aria-hidden="true" />
+      ) : q.isError ? (
+        <p className={styles.errorState} role="alert">
+          Couldn't load cash flow.
+        </p>
+      ) : max <= 0 ? (
+        <p className={styles.emptyState}>No payments received or made in the last 6 months.</p>
+      ) : (
+        <>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {rows.map((r) => (
+              <li key={r.month} style={{ padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <strong>{label(r.month)}</strong>
+                  <span className={ui.muted}>
+                    Received {money(r.received)}
+                    {r.paid !== null ? ` · Paid ${money(r.paid)}` : ""} ·{" "}
+                    <strong className="num" style={{ color: r.net < 0 ? "var(--color-danger, #b42318)" : undefined }}>
+                      Net {money(r.net)}
+                    </strong>
+                  </span>
+                </div>
+                <div aria-hidden="true" style={{ display: "grid", gap: 3, marginTop: 6 }}>
+                  <div style={{ height: 8, borderRadius: 4, width: `${(r.received / max) * 100}%`, minWidth: r.received > 0 ? 3 : 0, background: "var(--color-accent)" }} />
+                  {r.paid !== null ? <div style={{ height: 8, borderRadius: 4, width: `${((r.paid ?? 0) / max) * 100}%`, minWidth: (r.paid ?? 0) > 0 ? 3 : 0, background: "var(--color-warning, #9a6a00)" }} /> : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className={ui.muted} style={{ margin: "10px 0 0", fontSize: "var(--text-xs)" }}>
+            Last 6 months. Green is received from customers{showPaid ? ", amber is paid to suppliers" : ""}.
+            {!showPaid ? " Supplier payments are not shown when your access is limited to some companies." : ""}
+          </p>
+        </>
+      )}
+    </section>
+  );
+}

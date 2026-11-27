@@ -107,8 +107,8 @@ test("live: GST-inclusive invoice, partial payments and a reversal agree with th
   const calc = calcInvoice(lines.map((l) => ({ qty: l.qty, price: l.price, discount: l.discount, gstRate: l.gstRate })), "INCLUSIVE", true);
   assert.equal(calc.totalMinor, 21000n);
   await insertSale(db, "s1", { customerId: "cust", customerName: "x", lines, paymentMethod: null, pricingMode: "INCLUSIVE", sellerState: "20", customerState: "27", calc: snapshot(calc) }, Date.now(), "INV-0001");
-  await insertPayments(db, { groupId: "g1", partyId: "cust", method: "UPI", reference: "UTR1", note: "", paidAt: Date.now() - 2000, parts: [{ id: "pay1", saleLocalId: "s1", amount: "100.00" }] }, Date.now());
-  await insertPayments(db, { groupId: "g2", partyId: "cust", method: "CASH", reference: "", note: "", paidAt: Date.now() - 1000, parts: [{ id: "pay2", saleLocalId: "s1", amount: "110.00" }] }, Date.now());
+  await insertPayments(db, { groupId: "g1", partyId: "cust", method: "UPI", reference: "UTR1", note: "", paidAt: Date.now() - 2000, parts: [{ id: `pay1-${tag}`, saleLocalId: "s1", amount: "100.00" }] }, Date.now());
+  await insertPayments(db, { groupId: "g2", partyId: "cust", method: "CASH", reference: "", note: "", paidAt: Date.now() - 1000, parts: [{ id: `pay2-${tag}`, saleLocalId: "s1", amount: "110.00" }] }, Date.now());
 
   const eng = new SyncEngine(api, db);
   const r = await eng.syncNow();
@@ -132,9 +132,9 @@ test("live: GST-inclusive invoice, partial payments and a reversal agree with th
   await eng.syncNow(); // nothing new
   assert.equal((await api.get<{ receipts: unknown[] }>(`/accounting/sales-documents/${s.progress.docId}/receipts`)).receipts.length, 2, "a second sync books no extra receipt");
 
-  await reversePayment(db, "pay1", "Entered the wrong amount", Date.now());
+  await reversePayment(db, `pay1-${tag}`, "Entered the wrong amount", Date.now());
   await eng.syncNow();
-  assert.equal((await getPayment(db, "pay1"))!.reversal_state, "synced");
+  assert.equal((await getPayment(db, `pay1-${tag}`))!.reversal_state, "synced");
   const doc2 = await api.get<{ document: { PaidAmount: string } }>(`/sales/documents/${s.progress.docId}`);
   assert.equal(Number(doc2.document.PaidAmount), 110, "after reversing the ₹100 receipt, only ₹110 counts as paid");
   const after = await api.get<{ receipts: { ReversedAt: string | null; ReversalReason: string }[] }>(`/accounting/sales-documents/${s.progress.docId}/receipts`);

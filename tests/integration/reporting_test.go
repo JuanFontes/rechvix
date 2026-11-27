@@ -685,6 +685,15 @@ func TestReporting_PaymentModes_TotalsReceiptsByMethod(t *testing.T) {
 		t.Fatalf("largest method first, got %s", rows[0].Method)
 	}
 
+	// The same receipts, as cash flow: everything lands in this calendar month, nothing was paid to suppliers.
+	cf, err := reportingSvc.CashFlow(ctx, fx.Principal, reportingdomain.Filter{From: &from, To: &to})
+	if err != nil {
+		t.Fatalf("CashFlow: %v", err)
+	}
+	if len(cf) != 1 || cf[0].Month != time.Now().Format("2006-01") || cf[0].Received != "4000.00" || cf[0].Paid != "0.00" || cf[0].Net != "4000.00" {
+		t.Fatalf("cash flow = %+v, want one row for this month: received 4000.00, paid 0.00, net 4000.00", cf)
+	}
+
 	// A period that contains no receipts reports nothing.
 	pf, pt := time.Now().AddDate(0, 0, -30), time.Now().AddDate(0, 0, -20)
 	if rows, _ := reportingSvc.PaymentModes(ctx, fx.Principal, reportingdomain.Filter{From: &pf, To: &pt}); len(rows) != 0 {

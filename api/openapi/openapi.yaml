@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: rechvix API
-  version: "0.25.0"
+  version: "0.26.0"
   description: >
     Multi-company, multi-branch, multi-warehouse billing, inventory,
     accounting, and India-GST tax-management API. This spec is generated
@@ -2691,6 +2691,49 @@ paths:
         - { name: legal_entity_id, in: query, schema: { type: string, format: uuid } }
       responses:
         "200": { description: "Table with columns Method, Receipts, Amount.", content: { application/json: { schema: { type: object } } } }
+
+  /reports/accounting/cash-flow:
+    get:
+      tags: [Reports]
+      summary: Money received from customers and paid to suppliers, per calendar month.
+      description: Receipts that were reversed are left out. Supplier payments belong to no single company, so for a caller limited to some companies the Paid column is empty.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: legal_entity_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: "Table with columns Month, Received, Paid, Net.", content: { application/json: { schema: { type: object } } } }
+
+  /accounting/journals:
+    post:
+      tags: [Accounting]
+      summary: Post a balanced manual journal (the Expenses page and the phone app use it for expenses).
+      description: Every line is a debit or a credit and the totals must be equal. Send a client_ref (any string up to 100 characters, unique per journal you intend) to make a retry safe; posting the same client_ref again returns the journal already booked (HTTP 200) and posts nothing.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [source_type, lines], properties: { source_type: { type: string, example: manual_expense }, journal_date: { type: string, format: date-time }, description: { type: string }, client_ref: { type: string, maxLength: 100 }, lines: { type: array, items: { type: object, required: [account_code], properties: { account_code: { type: string }, party_id: { type: string, format: uuid }, debit: { type: string }, credit: { type: string }, description: { type: string } } } } } } } }
+      responses:
+        "201": { description: Journal posted., content: { application/json: { schema: { type: object } } } }
+        "200": { description: The journal already booked for this client_ref., content: { application/json: { schema: { type: object } } } }
+
+  /reminders/activity:
+    post:
+      tags: [Reports]
+      summary: Record a payment reminder a person prepared or handed off by hand (WhatsApp, share sheet, copied text).
+      description: Status is one of prepared, share_opened, marked_sent, cancelled. There is no delivered status because Rechvix cannot see delivery. Posting the same client_ref again returns the stored row, so a retried upload books once.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [party_id, channel, status, client_ref], properties: { party_id: { type: string, format: uuid }, sales_document_id: { type: string, format: uuid }, channel: { type: string, enum: [whatsapp, share, text, email, sms, other] }, status: { type: string, enum: [prepared, share_opened, marked_sent, cancelled] }, with_pdf: { type: boolean }, outstanding: { type: string }, client_ref: { type: string, maxLength: 100 }, occurred_at: { type: string, format: date-time } } } } }
+      responses:
+        "200": { description: The stored activity row., content: { application/json: { schema: { type: object } } } }
+    get:
+      tags: [Reports]
+      summary: The newest reminder hand-offs, optionally for one customer (party_id) or one invoice (sales_document_id).
+      parameters:
+        - { name: party_id, in: query, schema: { type: string, format: uuid } }
+        - { name: sales_document_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: "{ activity: [...] }, newest first, at most 200.", content: { application/json: { schema: { type: object } } } }
 
 components:
   parameters:

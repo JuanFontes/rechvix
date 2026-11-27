@@ -257,10 +257,12 @@ type postJournalLineRequest struct {
 }
 
 type postJournalRequest struct {
-	SourceType  string                   `json:"source_type"`
-	JournalDate *time.Time               `json:"journal_date"`
-	Description string                   `json:"description"`
-	Lines       []postJournalLineRequest `json:"lines"`
+	SourceType  string     `json:"source_type"`
+	JournalDate *time.Time `json:"journal_date"`
+	Description string     `json:"description"`
+	// ClientRef makes a retry safe: the same value returns the journal already posted (HTTP 200) instead of posting again.
+	ClientRef string                   `json:"client_ref"`
+	Lines     []postJournalLineRequest `json:"lines"`
 }
 
 // postJournal is the HTTP face of Service.Post's own doc comment ("a
@@ -286,15 +288,23 @@ func (h *Handlers) postJournal(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	p := principal(r)
-	j, err := h.svc.Post(r.Context(), p, app.JournalRequest{
+	if len(req.ClientRef) > 100 {
+		httpx.WriteError(w, r, httpx.NewBadRequest("INVALID_INPUT", "client_ref must be at most 100 characters."))
+		return
+	}
+	j, existing, err := h.svc.PostIdempotent(r.Context(), p, app.JournalRequest{
 		OrganisationID: p.OrganisationID, SourceType: req.SourceType, JournalDate: journalDate,
-		Description: req.Description, CreatedBy: p.UserID, Lines: lines,
+		Description: req.Description, CreatedBy: p.UserID, Lines: lines, ClientRef: req.ClientRef,
 	})
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, j)
+	status := http.StatusCreated
+	if existing {
+		status = http.StatusOK
+	}
+	httpx.WriteJSON(w, status, j)
 }
 
 func (h *Handlers) getJournal(w http.ResponseWriter, r *http.Request) {
@@ -380,6 +390,8 @@ type recordPaymentRequest struct {
 	Method             string          `json:"method"`
 	ReferenceNumber    string          `json:"reference_number"`
 	PaidAt             *time.Time      `json:"paid_at"`
+	// ClientRef makes retries safe: the same value returns the payment already booked instead of booking it again.
+	ClientRef string `json:"client_ref"`
 }
 
 func (h *Handlers) recordPayment(w http.ResponseWriter, r *http.Request) {
@@ -394,7 +406,7 @@ func (h *Handlers) recordPayment(w http.ResponseWriter, r *http.Request) {
 	}
 	pay, err := h.svc.RecordPayment(r.Context(), principal(r), app.RecordPaymentParams{
 		PartyID: req.PartyID, PurchaseDocumentID: req.PurchaseDocumentID, Amount: req.Amount, BankAccountID: req.BankAccountID,
-		Method: domain.PaymentMethod(req.Method), ReferenceNumber: req.ReferenceNumber, PaidAt: paidAt,
+		Method: domain.PaymentMethod(req.Method), ReferenceNumber: req.ReferenceNumber, PaidAt: paidAt, ClientRef: req.ClientRef,
 	})
 	if err != nil {
 		writeServiceError(w, r, err)

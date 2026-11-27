@@ -180,6 +180,15 @@ type PaymentModeRow struct {
 	Amount   string // decimal.Decimal.String(), in the receipts' own currency (the dashboard sums them the same way)
 }
 
+// CashFlowRow is money received from customers and paid to suppliers in one calendar month.
+// Supplier payments cannot be attributed to a company, so for a caller limited to some companies Paid is empty ("").
+type CashFlowRow struct {
+	Month    string // "2026-11"
+	Received string
+	Paid     string
+	Net      string
+}
+
 type StockMovementRow struct {
 	MovementID    uuid.UUID
 	OccurredAt    time.Time
@@ -309,6 +318,7 @@ type Repository interface {
 	StockValuation(ctx context.Context, f Filter) ([]StockValuationRow, error)
 	LowStock(ctx context.Context, f Filter) ([]LowStockRow, error)
 	PaymentModes(ctx context.Context, f Filter) ([]PaymentModeRow, error)
+	CashFlow(ctx context.Context, f Filter) ([]CashFlowRow, error)
 	StockMovements(ctx context.Context, f Filter) ([]StockMovementRow, error)
 	TrialBalance(ctx context.Context, orgID uuid.UUID, asOf time.Time) ([]TrialBalanceRow, error)
 	ReceivablesSummaryParties(ctx context.Context, orgID uuid.UUID) ([]uuid.UUID, error)
