@@ -72,6 +72,19 @@ func (b *whereBuilder) addRange(column string, from, to *time.Time) {
 	}
 }
 
+// addDayRange is addRange for a TIMESTAMP column when from/to are whole days (as the API takes them): the day `to` is included in full.
+// addRange would stop at 00:00 of `to`, dropping everything that happened on the last day itself (today's receipts, for one).
+func (b *whereBuilder) addDayRange(column string, from, to *time.Time) {
+	if from != nil {
+		b.args = append(b.args, *from)
+		b.clauses = append(b.clauses, fmt.Sprintf("%s >= $%d", column, len(b.args)))
+	}
+	if to != nil {
+		b.args = append(b.args, to.AddDate(0, 0, 1))
+		b.clauses = append(b.clauses, fmt.Sprintf("%s < $%d", column, len(b.args)))
+	}
+}
+
 func (b *whereBuilder) addOptionalUUID(column string, v *uuid.UUID) {
 	if v != nil {
 		b.add(column, *v)
@@ -592,7 +605,7 @@ func (r *Repo) LowStock(ctx context.Context, f domain.Filter) ([]domain.LowStock
 // when the caller is limited to some companies, on-account receipts (no invoice) cannot be attributed and are left out.
 func (r *Repo) PaymentModes(ctx context.Context, f domain.Filter) ([]domain.PaymentModeRow, error) {
 	w := newWhere(f.OrganisationID, "rc")
-	w.addRange("rc.received_at", f.From, f.To)
+	w.addDayRange("rc.received_at", f.From, f.To)
 	w.addOptionalUUIDs("sd.legal_entity_id", f.LegalEntityIDs)
 	q := fmt.Sprintf(`
 		SELECT rc.payment_method, COUNT(*), COALESCE(SUM(rc.amount), 0)
@@ -632,7 +645,7 @@ func (r *Repo) CashFlow(ctx context.Context, f domain.Filter) ([]domain.CashFlow
 		scoped = companies != 1
 	}
 	rw := newWhere(f.OrganisationID, "rc")
-	rw.addRange("rc.received_at", f.From, f.To)
+	rw.addDayRange("rc.received_at", f.From, f.To)
 	rw.addOptionalUUIDs("sd.legal_entity_id", f.LegalEntityIDs)
 	recv := map[string]decimal.Decimal{}
 	q := fmt.Sprintf(`
@@ -660,7 +673,7 @@ func (r *Repo) CashFlow(ctx context.Context, f domain.Filter) ([]domain.CashFlow
 	paid := map[string]decimal.Decimal{}
 	if !scoped {
 		pw := newWhere(f.OrganisationID, "pm")
-		pw.addRange("pm.paid_at", f.From, f.To)
+		pw.addDayRange("pm.paid_at", f.From, f.To)
 		pq := fmt.Sprintf(`
 			SELECT to_char(date_trunc('month', pm.paid_at), 'YYYY-MM'), COALESCE(SUM(pm.amount), 0)
 			FROM payments pm
@@ -712,7 +725,7 @@ func (r *Repo) CashFlow(ctx context.Context, f domain.Filter) ([]domain.CashFlow
 
 func (r *Repo) StockMovements(ctx context.Context, f domain.Filter) ([]domain.StockMovementRow, error) {
 	w := newWhere(f.OrganisationID, "sm")
-	w.addRange("sm.created_at", f.From, f.To)
+	w.addDayRange("sm.created_at", f.From, f.To)
 	w.addOptionalUUID("sm.warehouse_id", f.WarehouseID)
 	w.addOptionalUUID("sm.product_variant_id", f.ProductVariantID)
 	w.addLegalEntityViaWarehouse("sm.warehouse_id", f.LegalEntityIDs)

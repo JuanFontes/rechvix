@@ -14,6 +14,7 @@ import (
 	accountingdomain "rechvix/internal/modules/accounting/domain"
 	purchasesapp "rechvix/internal/modules/purchases/app"
 	purchasesdomain "rechvix/internal/modules/purchases/domain"
+	reportingdomain "rechvix/internal/modules/reporting/domain"
 )
 
 // A phone on a flaky connection retries "create this supplier bill". The same client_ref must return the document that already exists
@@ -143,5 +144,24 @@ func TestReporting_PayablesSummary_ShowsWhatIsOwedToASupplier(t *testing.T) {
 	}
 	if rows, err = reportingSvc.PayablesSummary(ctx, fx.Principal, time.Now()); err != nil || len(rows) != 0 {
 		t.Fatalf("payables after paying in full = %+v, %v; want none", rows, err)
+	}
+}
+
+// The API takes whole days ("to=2026-11-27"). Money received or paid ON the last day itself must be counted: the range used to stop at 00:00
+// of that day, so a dashboard asked for "up to today" left out everything that happened today.
+func TestReporting_CashFlow_IncludesTheLastDayItself(t *testing.T) {
+	ctx := context.Background()
+	fx := newBankFixture(t, ctx)
+	reportingSvc := newTestReportingService(t, fx.acct)
+	if _, err := fx.acct.RecordPayment(ctx, fx.Principal, accountingapp.RecordPaymentParams{PartyID: fx.SupplierID, Amount: mustDecimal(t, "300"), Method: accountingdomain.MethodCash, PaidAt: time.Now().UTC()}); err != nil {
+		t.Fatalf("RecordPayment: %v", err)
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour) // what "2026-11-27" parses to
+	rows, err := reportingSvc.CashFlow(ctx, fx.Principal, reportingdomain.Filter{From: &today, To: &today})
+	if err != nil {
+		t.Fatalf("CashFlow: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Paid != "300.00" {
+		t.Fatalf("cash flow for today..today = %+v, want today's 300.00 payment counted", rows)
 	}
 }
