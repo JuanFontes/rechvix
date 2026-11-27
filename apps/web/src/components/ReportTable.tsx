@@ -10,6 +10,9 @@ import ui from "./ui.module.css";
  * are not turned into "5,000". */
 const IDENTIFIER_HEADER = /sku|code|hsn|sac|number|no\.?$|id$|gstin|phone|pin|year/i;
 const NUMERIC = /^-?\d+(\.\d+)?$/;
+/** A column of database identifiers (a "Party ID" next to the party's name) means nothing to a person reading the screen. It is left out of the
+ * table; the CSV, Excel and PDF exports still carry it for anyone matching records elsewhere. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Status / type columns arrive as database enums ("TAX_INVOICE", "FINALIZED"); show them as words. Display only — exports keep the raw value. */
 const ENUM_HEADER = /^(status|type|document type|supply type)$/i;
 const ENUM_VALUE = /^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/;
@@ -53,6 +56,7 @@ export function ReportTable({ path, emptyLabel }: { path: string; emptyLabel?: s
   if (rows.length === 0) {
     return <p className={layout.emptyState}>{emptyLabel ?? "Nothing to show yet."}</p>;
   }
+  const shown = headers.map((_, j) => j).filter((j) => !(/\bid$/i.test(headers[j] ?? "") && rows.every((r) => UUID.test(String(r[j] ?? "")))));
   return (
     <div>
       <div className={ui.exportRow}>
@@ -71,15 +75,16 @@ export function ReportTable({ path, emptyLabel }: { path: string; emptyLabel?: s
         <table className={ui.table}>
           <thead>
             <tr>
-              {headers.map((h, i) => (
-                <th key={i} scope="col" style={numericCols[i] ? { textAlign: "right" } : undefined}>{h}</th>
+              {shown.map((i) => (
+                <th key={i} scope="col" style={numericCols[i] ? { textAlign: "right" } : undefined}>{headers[i]}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, i) => (
               <tr key={i}>
-                {row.map((cell, j) => {
+                {shown.map((j) => {
+                  const cell = row[j];
                   const f = formatCell(String(cell ?? ""), headers[j] ?? "");
                   return (
                     <td key={j} className={f.numeric ? "num" : undefined} style={f.numeric ? { textAlign: "right" } : undefined}>
