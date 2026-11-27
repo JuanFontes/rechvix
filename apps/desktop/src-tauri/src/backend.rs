@@ -259,7 +259,9 @@ fn start_postgres(paths: &AppPaths, port: u16) -> Result<(), StartupError> {
         .arg("-D").arg(&paths.pgdata_dir)
         .arg("-l").arg(&paths.pg_log_file)
         .arg("-w").arg("-t").arg("30")
-        .arg("-o").arg(format!("-p {port} -h 127.0.0.1")) // never 0.0.0.0 — see the trust-auth note above
+        // One person on one PC: the server's pool is 20 connections, so 40 leaves room for migrations and backups, and 64MB of shared buffers is
+        // plenty. Postgres' defaults (100 connections, 128MB) only cost memory here. Command-line only; nothing in an existing database changes.
+        .arg("-o").arg(format!("-p {port} -h 127.0.0.1 -c max_connections=40 -c shared_buffers=64MB")) // never 0.0.0.0 — see the trust-auth note above
         // pg_ctl's OWN stdout/stderr, separate from `-l`'s target: pg_ctl
         // can fail before the server ever launches (bad argument, can't
         // find postgres.exe, the restricted-token dance itself failing),
@@ -317,6 +319,9 @@ fn is_first_run(paths: &AppPaths) -> bool {
 
 pub fn start_backend(paths: &AppPaths) -> Result<RunningBackend, StartupError> {
     let first_run = is_first_run(paths);
+    // runtime.json describes the backend that is running NOW. A copy left by the previous run names a port nothing listens on any more and
+    // would send anything that reads it (test tooling, support scripts) to the wrong place until this start overwrites it.
+    let _ = std::fs::remove_file(&paths.runtime_info_file);
 
     let pg_port = pick_free_port()?;
     let http_port = pick_free_port()?;
