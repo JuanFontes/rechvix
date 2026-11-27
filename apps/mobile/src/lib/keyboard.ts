@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentRef } from "react";
-import { Keyboard, Platform, View } from "react-native";
+import { Keyboard, Platform, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewInstance } from "react-native";
 
 /** How far to lift a bar that sits at the bottom of a screen so the on-screen keyboard never covers it.
  *
@@ -19,4 +19,34 @@ export function useKeyboardLift() {
     return () => { show.remove(); hide.remove(); };
   }, []);
   return { anchor, lift };
+}
+
+/** For a long form in a ScrollView: when the keyboard opens it covers the lower half of the screen and (with the window not resized) the field being
+ *  typed in can end up underneath it. This pads the end of the content by the keyboard's height, so there is room to scroll, and scrolls just enough
+ *  to bring the focused field above the keyboard. Spread `props` on the ScrollView and add `pad` to its bottom padding. */
+export function useKeyboardAwareScroll() {
+  const ref = useRef<ScrollViewInstance>(null);
+  const offset = useRef(0);
+  const [pad, setPad] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow", (e) => {
+      setPad(e.endCoordinates.height);
+      const top = e.endCoordinates.screenY;
+      // Wait a frame so the extra padding is laid out before scrolling into it.
+      setTimeout(() => {
+        const input = TextInput.State.currentlyFocusedInput?.();
+        input?.measureInWindow((_x, y, _w, h) => {
+          const overlap = y + h + 24 - top;
+          if (overlap > 0) ref.current?.scrollTo({ y: offset.current + overlap, animated: true });
+        });
+      }, 60);
+    });
+    const hide = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide", () => setPad(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  const props = {
+    ref, scrollEventThrottle: 32,
+    onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => { offset.current = e.nativeEvent.contentOffset.y; },
+  };
+  return { props, pad };
 }

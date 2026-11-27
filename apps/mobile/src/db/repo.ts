@@ -457,3 +457,17 @@ export async function getExpenseCategories(db: Db): Promise<ExpenseCategory[]> {
   try { const v = JSON.parse(raw) as ExpenseCategory[]; return v.length ? v : DEFAULT_EXPENSE_CATEGORIES; } catch { return DEFAULT_EXPENSE_CATEGORIES; }
 }
 export const setExpenseCategories = (db: Db, list: ExpenseCategory[]): Promise<void> => kvSet(db, "expense_categories", JSON.stringify(list));
+
+/** Everything besides sales that is waiting to reach the server, or that the server refused: customer payments, expenses, supplier bills and supplier payments.
+ *  The sync banner counts these too, so it never says "All synced" while money records are still on the phone. */
+export async function countOtherWork(db: Db): Promise<{ waiting: number; failed: number }> {
+  const out = { waiting: 0, failed: 0 };
+  const q: [string, string][] = [
+    ["payments", "state='pending' AND reversed_at IS NULL"], ["payments", "reversal_state='pending'"],
+    ["expenses", "state='pending'"], ["purchases", "state='pending'"], ["supplier_payments", "state='pending'"],
+  ];
+  const f: [string, string][] = [["payments", "state='failed'"], ["expenses", "state='failed'"], ["purchases", "state='failed'"], ["supplier_payments", "state='failed'"]];
+  for (const [t, w] of q) out.waiting += (await db.first<{ n: number }>(`SELECT COUNT(*) AS n FROM ${t} WHERE ${w}`))?.n ?? 0;
+  for (const [t, w] of f) out.failed += (await db.first<{ n: number }>(`SELECT COUNT(*) AS n FROM ${t} WHERE ${w}`))?.n ?? 0;
+  return out;
+}

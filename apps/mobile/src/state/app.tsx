@@ -5,7 +5,7 @@ import { AppState } from "react-native";
 import { Api, ApiError } from "../api/client";
 import { openDb } from "../db/expo";
 import {
-  countByState, getOrg, getProfile, kvDel, kvGet, kvSet, resetSyncing, setProfile, createParty,
+  countByState, countOtherWork, getOrg, getProfile, kvDel, kvGet, kvSet, resetSyncing, setProfile, createParty,
   type Org, type Profile, type SaleState,
 } from "../db/repo";
 import { profileFromOrg } from "../lib/profile";
@@ -41,6 +41,8 @@ export interface AppCtx {
   online: boolean;
   syncing: boolean;
   counts: Counts;
+  /** Waiting / refused items other than sales (payments, expenses, supplier bills and payments). */
+  other: { waiting: number; failed: number };
   lastSyncAt: number | null;
   sessionExpired: boolean;
   lastSync: SyncResult | null;
@@ -93,6 +95,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [online, setOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [counts, setCounts] = useState<Counts>(NO_COUNTS);
+  const [other, setOther] = useState({ waiting: 0, failed: 0 });
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [lastSync, setLastSync] = useState<SyncResult | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -110,6 +113,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const d = dbRef.current;
     if (!d) return;
     setCounts(await countByState(d));
+    setOther(await countOtherWork(d));
     setOrg(await getOrg(d));
     setProfileState(await getProfile(d));
     const t = await kvGet(d, "last_sync_at");
@@ -308,7 +312,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     phase, db, profile, org,
     currency: org?.currency ?? profile?.currency ?? "INR",
     businessName: profile?.name || org?.legalName || "Rechvix",
-    linked, server, email, linking, online, syncing, counts, lastSyncAt, sessionExpired, lastSync, version,
+    linked, server, email, linking, online, syncing, counts, other, lastSyncAt, sessionExpired, lastSync, version,
     startLinking, cancelLinking, connect, login, logout, disconnect, syncNow, changed, completeSetup, saveProfile, saveCart, correctInvoice, saveQuoteCart, creditInvoice,
   };
   return <Ctx value={value}>{children}</Ctx>;

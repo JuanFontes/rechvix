@@ -202,3 +202,17 @@ test("after a pull replaces stock with the server's figure, bills the server has
   await reapplyPendingPurchaseStock(db);
   assert.equal(await stock(db, "v1"), "15", "not counted twice");
 });
+
+test("the banner's count of other work sees expenses, payments, bills and supplier payments, waiting and refused", async () => {
+  const { countOtherWork, addExpense } = await import("../src/db/repo");
+  const db = await setup();
+  assert.deepEqual(await countOtherWork(db), { waiting: 0, failed: 0 });
+  await addExpense(db, { id: "e1", at: NOW, category: { code: "5990", name: "General expenses" }, amount: "10.00", method: "CASH", note: "" }, NOW);
+  await savePurchase(db, { id: "b1", supplierId: "sup-1", billNo: "", billDate: NOW, note: "", lines, paid: { amount: "100", method: "CASH" } }, NOW);
+  assert.deepEqual(await countOtherWork(db), { waiting: 3, failed: 0 }, "an expense, a bill and its payment");
+  await db.run("UPDATE expenses SET state='failed'");
+  await db.run("UPDATE purchases SET state='failed'");
+  assert.deepEqual(await countOtherWork(db), { waiting: 1, failed: 2 });
+  await db.run("UPDATE expenses SET state='synced'"); await db.run("UPDATE purchases SET state='synced'"); await db.run("UPDATE supplier_payments SET state='synced'");
+  assert.deepEqual(await countOtherWork(db), { waiting: 0, failed: 0 });
+});

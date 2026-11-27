@@ -9,6 +9,7 @@ import { searchProducts, type Product } from "../db/repo";
 import { dec, minorToString, parseDec, parseMinor } from "../lib/decimal";
 import { formatMinor } from "../lib/money";
 import { nowMs, useLocal } from "../lib/hooks";
+import { useKeyboardAwareScroll } from "../lib/keyboard";
 import { uid, useApp } from "../state/app";
 import { fonts, radius, space, usePalette } from "../theme";
 import { Badge, Button, Card, Chip, Divider, Empty, Field, Header, Icon, IconButton, Label, Screen, Tap } from "../ui/kit";
@@ -96,6 +97,7 @@ function Detail({ id, onBack, newBill, edit }: { id: string; onBack: () => void;
   const row = useLocal((d) => suppliersWithOwed(d).then((r) => r.find((x) => x.id === id) ?? null), null as SupplierRow | null, [id]);
   const bills = useLocal((d) => purchasesForSupplier(d, id), [] as Purchase[], [id]);
   const pays = useLocal((d) => paymentsForSupplier(d, id), [] as SupplierPayment[], [id]);
+  const kb = useKeyboardAwareScroll();
   const [paying, setPaying] = useState(false);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("CASH");
@@ -155,7 +157,7 @@ function Detail({ id, onBack, newBill, edit }: { id: string; onBack: () => void;
           {sup.phone ? <IconButton name="call-outline" label={`Call ${sup.name}`} onPress={() => void Linking.openURL(`tel:${sup.phone}`)} /> : null}
           {sup.origin === "local" && !sup.pushed ? <IconButton name="create-outline" label="Edit supplier" onPress={edit} /> : null}
         </View>} />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: 40, paddingTop: space.xs }}>
+      <ScrollView {...kb.props} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: 40 + kb.pad, paddingTop: space.xs }}>
         <Card style={{ gap: 4 }}>
           <T v="label" muted>{owed < 0n ? "Paid in advance" : "You owe"}</T>
           <T v="moneyLg" adjustsFontSizeToFit numberOfLines={1} color={owed > 0n ? c.negative : c.text}>{m(owed < 0n ? -owed : owed)}</T>
@@ -199,6 +201,7 @@ function NewBill({ supplierId, onBack, done, addSupplier }: { supplierId: string
   const [err, setErr] = useState<string | null>(null);
   const suppliers = useLocal((d) => suppliersWithOwed(d), [] as SupplierRow[]);
   const results = useLocal((d) => searchProducts(d, q, 8), [] as Product[], [q]);
+  const kb = useKeyboardAwareScroll();
   const m = (x: bigint) => formatMinor(x, currency);
   const chosen = suppliers.find((s) => s.id === supId) ?? null;
   const total = billMinor(lines.filter((l) => parseDec(l.qty) != null && parseDec(l.cost) != null));
@@ -229,7 +232,7 @@ function NewBill({ supplierId, onBack, done, addSupplier }: { supplierId: string
 
   return (
     <Screen>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 60 }}>
+      <ScrollView {...kb.props} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 60 + kb.pad }}>
         <Header title="New supplier bill" onBack={onBack} sub="Saving it adds the goods to your stock and to what you owe." />
         <View style={{ padding: space.lg, gap: space.lg, paddingTop: space.xs }}>
           <View style={{ gap: 8 }}>
