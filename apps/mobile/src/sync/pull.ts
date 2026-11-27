@@ -1,6 +1,7 @@
 import type { Api } from "../api/client";
 import type { Db } from "../db/types";
 import { getOrg, kvSet, reapplyPendingStock, setOrg, type Org } from "../db/repo";
+import { reapplyPendingPurchaseStock } from "../db/purchases";
 
 interface LegalEntity { ID: string; OrganisationID: string; LegalName: string; CountryCode: string; BaseCurrencyCode: string; GSTStateCode: string; Status: string }
 interface Branch { ID: string; Status: string }
@@ -83,7 +84,14 @@ export async function pullMaster(api: Api, db: Db, now: () => number = Date.now)
   let count = 0;
   for (const p of parties) {
     if (p.Status !== "ACTIVE" && p.ID !== walkIn.ID) continue;
-    if (p.PartyType === "SUPPLIER") continue;
+    if (p.PartyType === "SUPPLIER") {
+      await db.run(
+        `INSERT INTO suppliers(id,name,phone,gen) VALUES(?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET name=excluded.name,phone=excluded.phone,gen=excluded.gen`,
+        [p.ID, p.LegalName, p.Phone ?? "", gen],
+      );
+      continue;
+    }
     await db.run(
       `INSERT INTO parties(id,name,phone,type,is_walk_in,gen) VALUES(?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET name=excluded.name,phone=excluded.phone,type=excluded.type,is_walk_in=excluded.is_walk_in,gen=excluded.gen`,
@@ -92,6 +100,19 @@ export async function pullMaster(api: Api, db: Db, now: () => number = Date.now)
     count++;
   }
   await db.run("DELETE FROM parties WHERE gen < ? AND (origin='server' OR pushed=1)", [gen]);
+  await db.run("DELETE FROM suppliers WHERE gen < ? AND (origin='server' OR pushed=1)", [gen]);
+
+  // What the business owes each supplier (bills from the web or other phones included). Best effort, like the receivables below.
+  try {
+    const t = await api.get<{ headers: string[]; rows: string[][] | null }>("/reports/accounting/payables");
+    const idCol = t.headers.indexOf("Party ID"), totalCol = t.headers.indexOf("Total");
+    if (idCol >= 0 && totalCol >= 0) {
+      for (const r of t.rows ?? []) {
+        await db.run("INSERT INTO supplier_balances(party_id,name,owed,gen) VALUES(?,?,?,?) ON CONFLICT(party_id) DO UPDATE SET name=excluded.name,owed=excluded.owed,gen=excluded.gen", [r[idCol]!, r[0] ?? "", r[totalCol]!, gen]);
+      }
+      await db.run("DELETE FROM supplier_balances WHERE gen < ?", [gen]);
+    }
+  } catch { /* keep the previous figures */ }
 
   // Recent invoices from anywhere, for the history list. Best effort: history is nice to have, not needed to sell.
   try {
@@ -125,6 +146,7 @@ export async function pullMaster(api: Api, db: Db, now: () => number = Date.now)
   };
   await setOrg(db, org);
   await reapplyPendingStock(db);
+  await reapplyPendingPurchaseStock(db);
   await kvSet(db, "last_pull_at", String(gen));
   void prev;
   return { products, parties: count };

@@ -155,6 +155,32 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX expenses_at ON expenses(at);
   `,
+  // v9: suppliers, supplier bills (purchases) and money paid to suppliers. Purely additive. A bill is uploaded as a draft that carries a client_ref, then its
+  // lines, then finalized; `progress` records how far it got so a retry resumes instead of repeating. A payment to a supplier carries its own client_ref, so
+  // a retried upload books the money once. purchase_id ties a "paid now" amount to the bill it settles; such a payment waits until the bill is on the server.
+  `
+  CREATE TABLE suppliers (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', gstin TEXT NOT NULL DEFAULT '',
+    origin TEXT NOT NULL DEFAULT 'server', pushed INTEGER NOT NULL DEFAULT 1, gen INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX suppliers_name ON suppliers(name COLLATE NOCASE);
+  CREATE TABLE purchases (
+    id TEXT PRIMARY KEY, supplier_id TEXT NOT NULL, bill_no TEXT NOT NULL DEFAULT '', bill_date INTEGER NOT NULL, note TEXT NOT NULL DEFAULT '',
+    payload TEXT NOT NULL, total TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending',   -- pending | synced | failed
+    progress TEXT NOT NULL DEFAULT '{}', doc_number TEXT, error TEXT, attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL
+  );
+  CREATE INDEX purchases_state ON purchases(state, created_at);
+  CREATE INDEX purchases_supplier ON purchases(supplier_id, bill_date);
+  CREATE TABLE supplier_payments (
+    id TEXT PRIMARY KEY, supplier_id TEXT NOT NULL, purchase_id TEXT, amount TEXT NOT NULL, method TEXT NOT NULL, note TEXT NOT NULL DEFAULT '',
+    paid_at INTEGER NOT NULL, state TEXT NOT NULL DEFAULT 'pending',                     -- pending | synced | failed
+    server_payment_id TEXT, error TEXT, attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL
+  );
+  CREATE INDEX supplier_payments_supplier ON supplier_payments(supplier_id, paid_at);
+  CREATE INDEX supplier_payments_state ON supplier_payments(state, created_at);
+  -- What the business owes each supplier, from the server (includes bills made on the web), refreshed on every pull.
+  CREATE TABLE supplier_balances (party_id TEXT PRIMARY KEY, name TEXT NOT NULL, owed TEXT NOT NULL, gen INTEGER NOT NULL DEFAULT 0);
+  `,
 ];
 
 export async function migrate(db: Db): Promise<void> {

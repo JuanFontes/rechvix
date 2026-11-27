@@ -20,6 +20,7 @@ import { SaleDetail, Sales } from "./src/screens/Sales";
 import { Sell } from "./src/screens/Sell";
 import { QuoteDetail, Quotes } from "./src/screens/Quotes";
 import { Expenses } from "./src/screens/Expenses";
+import { Suppliers, suppliersBack } from "./src/screens/Suppliers";
 import { Welcome } from "./src/screens/Welcome";
 import { AppProvider, useApp } from "./src/state/app";
 import { usePalette } from "./src/theme";
@@ -57,6 +58,7 @@ function Shell() {
   const [designOpen, setDesignOpen] = useState(false);
   const [quotesOpen, setQuotesOpen] = useState(false);
   const [expensesOpen, setExpensesOpen] = useState(false);
+  const [suppliersOpen, setSuppliersOpen] = useState(false);
   const [dayBookOpen, setDayBookOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [quote, setQuote] = useState<string | null>(null);
@@ -74,6 +76,7 @@ function Shell() {
       if (reportsOpen) { setReportsOpen(false); return true; }
       if (quote) { setQuote(null); return true; }
       if (expensesOpen) { setExpensesOpen(false); return true; }
+      if (suppliersOpen) { if (!suppliersBack.current?.()) setSuppliersOpen(false); return true; }
       if (quotesOpen) { setQuotesOpen(false); return true; }
       if (designOpen) { setDesignOpen(false); return true; }
       if (itemsOpen) { setItemsOpen(false); return true; }
@@ -84,7 +87,7 @@ function Shell() {
       return false;
     });
     return () => sub.remove();
-  }, [sale, customers, tab, profileOpen, itemEditor, custEditor, designOpen, itemsOpen, ledger, quotesOpen, expensesOpen, quote, dayBookOpen, reportsOpen]);
+  }, [sale, customers, tab, profileOpen, itemEditor, custEditor, designOpen, itemsOpen, ledger, quotesOpen, expensesOpen, suppliersOpen, quote, dayBookOpen, reportsOpen]);
 
   if (phase === "boot") return <Splash />;
   // Linking comes before the welcome screen: a first-time user who chooses "my server" signs in here, and the app builds their business from it.
@@ -92,7 +95,7 @@ function Shell() {
   if (linking === "login" || (linked && sessionExpired)) return <Login />;
   if (phase === "welcome") return <Welcome />;
 
-  const go = (t: Tab | "items") => { setQuote(null); setQuotesOpen(false); setExpensesOpen(false); setDayBookOpen(false); setReportsOpen(false); setSale(null); setCustomers(false); setProfileOpen(false); setDesignOpen(false); setLedger(null); if (t === "items") { setItemsOpen(true); return; } setItemsOpen(false); setTab(t); };
+  const go = (t: Tab | "items") => { setQuote(null); setQuotesOpen(false); setExpensesOpen(false); setSuppliersOpen(false); setDayBookOpen(false); setReportsOpen(false); setSale(null); setCustomers(false); setProfileOpen(false); setDesignOpen(false); setLedger(null); if (t === "items") { setItemsOpen(true); return; } setItemsOpen(false); setTab(t); };
   const openLedger = (id: string) => { setSale(null); setLedger(id); };
 
   const body = quote ? <QuoteDetail id={quote} onClose={() => setQuote(null)} goSell={() => { setQuote(null); setQuotesOpen(false); setTab("sell"); }} />
@@ -102,6 +105,7 @@ function Shell() {
     : reportsOpen ? <Reports onBack={() => setReportsOpen(false)} openCustomer={setLedger} />
     : dayBookOpen ? <DayBook onBack={() => setDayBookOpen(false)} openSale={setSale} openCustomer={setLedger} />
     : expensesOpen ? <Expenses onBack={() => setExpensesOpen(false)} />
+    : suppliersOpen ? <Suppliers onBack={() => setSuppliersOpen(false)} />
     : quotesOpen ? <Quotes onBack={() => setQuotesOpen(false)} open={setQuote} />
     : profileOpen ? <ProfileEditor onClose={() => setProfileOpen(false)} />
     : designOpen ? <InvoiceDesign onClose={() => setDesignOpen(false)} />
@@ -113,7 +117,7 @@ function Shell() {
     : tab === "sell" ? <Sell onDone={(id) => { setTab("sales"); setSale(id); }} addItem={() => setItemEditor(null)} />
     : tab === "sales" ? <Sales open={setSale} />
     : tab === "dues" ? <Dues open={setLedger} />
-    : <More openCustomers={() => setCustomers(true)} openProfile={() => setProfileOpen(true)} openItems={() => setItemsOpen(true)} openDesign={() => setDesignOpen(true)} openQuotes={() => setQuotesOpen(true)} openExpenses={() => setExpensesOpen(true)} openDayBook={() => setDayBookOpen(true)} openReports={() => setReportsOpen(true)} />;
+    : <More openCustomers={() => setCustomers(true)} openProfile={() => setProfileOpen(true)} openItems={() => setItemsOpen(true)} openDesign={() => setDesignOpen(true)} openQuotes={() => setQuotesOpen(true)} openExpenses={() => setExpensesOpen(true)} openSuppliers={() => setSuppliersOpen(true)} openDayBook={() => setDayBookOpen(true)} openReports={() => setReportsOpen(true)} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -125,7 +129,7 @@ function Shell() {
 
       <View style={{ flexDirection: "row", backgroundColor: c.bar, paddingBottom: insets.bottom, alignItems: "flex-end" }} accessibilityRole="tablist">
         {TABS.map((t) => {
-          const on = tab === t.key && !sale && !customers && !profileOpen && !itemsOpen && !designOpen && !ledger && !quotesOpen && !expensesOpen && !quote && !dayBookOpen && !reportsOpen;
+          const on = tab === t.key && !sale && !customers && !profileOpen && !itemsOpen && !designOpen && !ledger && !quotesOpen && !expensesOpen && !suppliersOpen && !quote && !dayBookOpen && !reportsOpen;
           if (t.key === "sell") {
             return (
               <View key={t.key} style={{ flex: 1, alignItems: "center" }}>

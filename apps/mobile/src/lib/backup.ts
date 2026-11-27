@@ -1,7 +1,7 @@
 import type { Db, Param } from "../db/types";
 
 /** Every table that holds the business's own records. (server_balances and the sync bookkeeping are caches the server rebuilds.) */
-export const BACKUP_TABLES = ["products", "parties", "sales", "id_map", "payments", "sale_revisions", "reminders", "quotes", "credit_notes", "item_low", "expenses"] as const;
+export const BACKUP_TABLES = ["products", "parties", "sales", "id_map", "payments", "sale_revisions", "reminders", "quotes", "credit_notes", "item_low", "expenses", "suppliers", "purchases", "supplier_payments"] as const;
 /** Settings and counters. The server link ("server") is never part of a backup: restoring must not silently re-link a phone. */
 const KV_SKIP = new Set(["server"]);
 
@@ -81,4 +81,4 @@ export async function restoreBackup(db: Db, text: string): Promise<Record<string
 
 /** Tables added after a file's schema version are legitimately absent from it (quotes and credit notes arrived in v4, item_low in v5). */
 const tableAbsentInOldFile = (t: string, file: BackupFile): boolean =>
-  (t === "quotes" || t === "credit_notes") ? file.schema < 4 : t === "item_low" ? file.schema < 5 : t === "expenses" ? file.schema < 8 : (t === "payments" || t === "sale_revisions" || t === "reminders") ? file.schema < 3 : false;
+  (t === "quotes" || t === "credit_notes") ? file.schema < 4 : t === "item_low" ? file.schema < 5 : t === "expenses" ? file.schema < 8 : (t === "suppliers" || t === "purchases" || t === "supplier_payments") ? file.schema < 9 : (t === "payments" || t === "sale_revisions" || t === "reminders") ? file.schema < 3 : false;
