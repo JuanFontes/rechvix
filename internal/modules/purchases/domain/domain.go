@@ -107,6 +107,9 @@ type Document struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	FinalizedAt   *time.Time
+	// ClientRef is the caller's own id for this document: creating again with the same value returns the document that already exists
+	// (safe retries for clients on unreliable connections). Empty when the caller did not send one.
+	ClientRef string
 	// LinesTotal is the sum of line totals before tax. Read-only: the
 	// repository computes it on every read so list screens can show a
 	// total without fetching lines.
@@ -139,6 +142,8 @@ type DocumentLine struct {
 type DocumentRepository interface {
 	Create(ctx context.Context, d *Document) error
 	GetByID(ctx context.Context, orgID, id uuid.UUID) (*Document, error)
+	// GetByClientRef returns the document created with this client_ref, or ErrNotFound.
+	GetByClientRef(ctx context.Context, orgID uuid.UUID, clientRef string) (*Document, error)
 	// legalEntityIDs is a company filter: nil means no restriction (every
 	// company), a non-nil (possibly empty) slice restricts to exactly
 	// those legal entities — see permissions.ResolveLegalEntityFilter.

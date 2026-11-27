@@ -301,7 +301,7 @@ func (s *Service) ReceivablesSummary(ctx context.Context, principal permissions.
 	if err != nil {
 		return nil, err
 	}
-	return s.ageingRows(ctx, principal, ids, asOf)
+	return s.ageingRows(ctx, principal, ids, asOf, false)
 }
 
 // ReceivablesDetailed is ReceivablesSummary plus each party's phone (for
@@ -372,13 +372,17 @@ func (s *Service) PayablesSummary(ctx context.Context, principal permissions.Pri
 	if err != nil {
 		return nil, err
 	}
-	return s.ageingRows(ctx, principal, ids, asOf)
+	return s.ageingRows(ctx, principal, ids, asOf, true)
 }
 
-func (s *Service) ageingRows(ctx context.Context, principal permissions.Principal, partyIDs []uuid.UUID, asOf time.Time) ([]domain.PartyOutstandingRow, error) {
+func (s *Service) ageingRows(ctx context.Context, principal permissions.Principal, partyIDs []uuid.UUID, asOf time.Time, payable bool) ([]domain.PartyOutstandingRow, error) {
 	out := make([]domain.PartyOutstandingRow, 0, len(partyIDs))
 	for _, id := range partyIDs {
-		bucket, err := s.accounting.GetAgeing(ctx, principal, id, asOf)
+		ageing := s.accounting.GetAgeing
+		if payable {
+			ageing = s.accounting.GetPayableAgeing
+		}
+		bucket, err := ageing(ctx, principal, id, asOf)
 		if err != nil {
 			return nil, fmt.Errorf("reporting: ageing for party %s: %w", id, err)
 		}

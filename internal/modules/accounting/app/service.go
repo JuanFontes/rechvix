@@ -806,6 +806,9 @@ type RecordPaymentParams struct {
 	Method             domain.PaymentMethod
 	ReferenceNumber    string
 	PaidAt             time.Time
+	// ClientRef makes the call idempotent: a payment already booked under this reference is returned unchanged (provided it matches
+	// this request) and nothing is booked a second time.
+	ClientRef string
 }
 
 // RecordPayment books money paid to a supplier: Dr Accounts Payable
@@ -816,6 +819,15 @@ func (s *Service) RecordPayment(ctx context.Context, principal permissions.Princ
 	}
 	if !p.Amount.IsPositive() {
 		return nil, fmt.Errorf("accounting: payment amount must be positive")
+	}
+	p.ClientRef = strings.TrimSpace(p.ClientRef)
+	if len(p.ClientRef) > 100 {
+		return nil, domain.Invalid("client_ref is too long")
+	}
+	if p.ClientRef != "" {
+		if existing, err := s.existingPaymentByClientRef(ctx, principal, p); existing != nil || err != nil {
+			return existing, err
+		}
 	}
 	now := s.now()
 	paidAt := p.PaidAt
@@ -858,14 +870,47 @@ func (s *Service) RecordPayment(ctx context.Context, principal permissions.Princ
 		pay = &domain.Payment{
 			ID: id, OrganisationID: principal.OrganisationID, PartyID: p.PartyID, PurchaseDocumentID: p.PurchaseDocumentID,
 			Amount: amount, BankAccountID: p.BankAccountID, Method: p.Method, ReferenceNumber: p.ReferenceNumber,
-			PaidAt: paidAt, JournalID: j.ID, CreatedBy: principal.UserID, CreatedAt: now,
+			PaidAt: paidAt, JournalID: j.ID, CreatedBy: principal.UserID, CreatedAt: now, ClientRef: p.ClientRef,
 		}
 		return s.payments.Create(ctx, pay)
 	})
+	if errors.Is(err, domain.ErrDuplicateClientRef) {
+		// Two identical requests raced: the loser's transaction (and its journal) rolled back; return the winner's payment.
+		existing, getErr := s.existingPaymentByClientRef(ctx, principal, p)
+		if existing != nil || getErr != nil {
+			return existing, getErr
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
 	return pay, nil
+}
+
+// existingPaymentByClientRef returns the payment already booked under p.ClientRef, or (nil, nil). A reused client_ref with different
+// details is an error rather than a silent return of the old payment.
+func (s *Service) existingPaymentByClientRef(ctx context.Context, principal permissions.Principal, p RecordPaymentParams) (*domain.Payment, error) {
+	var found *domain.Payment
+	err := s.pool.RunScoped(ctx, principal.OrganisationID, func(ctx context.Context) error {
+		r, err := s.payments.GetByClientRef(ctx, principal.OrganisationID, p.ClientRef)
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		found = r
+		return nil
+	})
+	if err != nil || found == nil {
+		return nil, err
+	}
+	sameDoc := (found.PurchaseDocumentID == nil && p.PurchaseDocumentID == nil) ||
+		(found.PurchaseDocumentID != nil && p.PurchaseDocumentID != nil && *found.PurchaseDocumentID == *p.PurchaseDocumentID)
+	if found.PartyID != p.PartyID || !sameDoc || !found.Amount.Decimal().Equal(p.Amount) {
+		return nil, domain.Invalid(fmt.Sprintf("client_ref %q was already used for a different payment", p.ClientRef))
+	}
+	return found, nil
 }
 
 // --- Ledger / ageing ---
@@ -938,6 +983,17 @@ func (s *Service) GetPartyLedger(ctx context.Context, principal permissions.Prin
 // against a particular invoice rather than FIFO-applied, is a larger
 // feature flagged in the ADR as a follow-up, not built here).
 func (s *Service) GetAgeing(ctx context.Context, principal permissions.Principal, partyID uuid.UUID, asOf time.Time) (domain.AgeingBucket, error) {
+	return s.ageing(ctx, principal, partyID, asOf, false)
+}
+
+// GetPayableAgeing is GetAgeing seen from the other side, for a supplier: what the business OWES is built from the CREDITS (each bill is an open
+// item) and is settled by the debits (payments, returns, debit notes), oldest bill first. GetAgeing treats debits as the open items, which is right
+// for a customer and wrong for a supplier: it reported nothing owed to a supplier who had been billed more than paid.
+func (s *Service) GetPayableAgeing(ctx context.Context, principal permissions.Principal, partyID uuid.UUID, asOf time.Time) (domain.AgeingBucket, error) {
+	return s.ageing(ctx, principal, partyID, asOf, true)
+}
+
+func (s *Service) ageing(ctx context.Context, principal permissions.Principal, partyID uuid.UUID, asOf time.Time, payable bool) (domain.AgeingBucket, error) {
 	if err := s.view(ctx, principal); err != nil {
 		return domain.AgeingBucket{}, err
 	}
@@ -963,11 +1019,15 @@ func (s *Service) GetAgeing(ctx context.Context, principal permissions.Principal
 	var open []openDebit
 	credits := decimal.Zero
 	for _, r := range rows {
-		if r.Debit.Decimal().IsPositive() {
-			open = append(open, openDebit{date: r.JournalDate, amount: r.Debit.Decimal()})
+		opens, settles := r.Debit.Decimal(), r.Credit.Decimal()
+		if payable {
+			opens, settles = settles, opens
 		}
-		if r.Credit.Decimal().IsPositive() {
-			credits = credits.Add(r.Credit.Decimal())
+		if opens.IsPositive() {
+			open = append(open, openDebit{date: r.JournalDate, amount: opens})
+		}
+		if settles.IsPositive() {
+			credits = credits.Add(settles)
 		}
 	}
 	sort.SliceStable(open, func(i, j int) bool { return open[i].date.Before(open[j].date) })

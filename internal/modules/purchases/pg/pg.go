@@ -32,15 +32,18 @@ func (r *DocumentRepo) Create(ctx context.Context, d *domain.Document) error {
 		INSERT INTO purchase_documents (
 			id, organisation_id, branch_id, warehouse_id, supplier_party_id, document_type, document_number,
 			reference_document_id, status, supplier_invoice_number, supplier_invoice_date, document_date,
-			currency_code, notes, created_by, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$16)`
+			currency_code, notes, created_by, created_at, updated_at, client_ref
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$16,$17)`
 	_, err := r.pool.Q(ctx).Exec(ctx, q,
 		d.ID, d.OrganisationID, d.BranchID, d.WarehouseID, d.SupplierPartyID, string(d.DocumentType), d.DocumentNumber,
 		d.ReferenceDocumentID, string(d.Status), nullIfEmpty(d.SupplierInvoiceNumber), d.SupplierInvoiceDate, d.DocumentDate,
-		d.CurrencyCode, nullIfEmpty(d.Notes), d.CreatedBy, d.CreatedAt,
+		d.CurrencyCode, nullIfEmpty(d.Notes), d.CreatedBy, d.CreatedAt, nullIfEmpty(d.ClientRef),
 	)
 	if err != nil {
 		if pgUniqueViolation(err) {
+			if d.ClientRef != "" {
+				return domain.ErrDuplicateClientRef
+			}
 			return domain.ErrDuplicateNumber
 		}
 		return fmt.Errorf("purchases: inserting purchase_document: %w", err)
@@ -51,12 +54,18 @@ func (r *DocumentRepo) Create(ctx context.Context, d *domain.Document) error {
 const documentCols = `id, organisation_id, branch_id, warehouse_id, supplier_party_id, document_type, document_number,
 	reference_document_id, status, COALESCE(supplier_invoice_number, ''), supplier_invoice_date, document_date,
 	currency_code, COALESCE(notes, ''), tax_document_id, created_by, created_at, updated_at, finalized_at,
-	COALESCE((SELECT sum(l.line_total_amount) FROM purchase_document_lines l WHERE l.purchase_document_id = purchase_documents.id), 0)`
+	COALESCE((SELECT sum(l.line_total_amount) FROM purchase_document_lines l WHERE l.purchase_document_id = purchase_documents.id), 0),
+	COALESCE(client_ref, '')`
 
 func (r *DocumentRepo) GetByID(ctx context.Context, orgID, id uuid.UUID) (*domain.Document, error) {
 	q := fmt.Sprintf(`SELECT %s FROM purchase_documents WHERE organisation_id = $1 AND id = $2`, documentCols)
 	row := r.pool.Q(ctx).QueryRow(ctx, q, orgID, id)
 	return scanDocument(row)
+}
+
+func (r *DocumentRepo) GetByClientRef(ctx context.Context, orgID uuid.UUID, clientRef string) (*domain.Document, error) {
+	q := fmt.Sprintf(`SELECT %s FROM purchase_documents WHERE organisation_id = $1 AND client_ref = $2`, documentCols)
+	return scanDocument(r.pool.Q(ctx).QueryRow(ctx, q, orgID, clientRef))
 }
 
 func (r *DocumentRepo) ListByOrganisation(ctx context.Context, orgID uuid.UUID, documentType *domain.DocumentType, legalEntityIDs []uuid.UUID) ([]*domain.Document, error) {
@@ -162,7 +171,7 @@ func scanDocumentRow(row scannable) (*domain.Document, error) {
 	var docType, status string
 	if err := row.Scan(&d.ID, &d.OrganisationID, &d.BranchID, &d.WarehouseID, &d.SupplierPartyID, &docType, &d.DocumentNumber,
 		&d.ReferenceDocumentID, &status, &d.SupplierInvoiceNumber, &d.SupplierInvoiceDate, &d.DocumentDate,
-		&d.CurrencyCode, &d.Notes, &d.TaxDocumentID, &d.CreatedBy, &d.CreatedAt, &d.UpdatedAt, &d.FinalizedAt, &d.LinesTotal); err != nil {
+		&d.CurrencyCode, &d.Notes, &d.TaxDocumentID, &d.CreatedBy, &d.CreatedAt, &d.UpdatedAt, &d.FinalizedAt, &d.LinesTotal, &d.ClientRef); err != nil {
 		return nil, err
 	}
 	d.DocumentType = domain.DocumentType(docType)

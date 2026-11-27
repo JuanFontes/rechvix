@@ -9,6 +9,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"rechvix/internal/modules/taxregimes"
 	"strings"
@@ -184,18 +185,36 @@ type CreateDocumentParams struct {
 	DocumentDate          time.Time
 	CurrencyCode          string
 	Notes                 string
+	// ClientRef makes the call idempotent: when a document with this reference already exists it is returned unchanged (provided it
+	// matches this request) and no second document is created.
+	ClientRef string
 }
 
 func (s *Service) CreateDocument(ctx context.Context, principal permissions.Principal, p CreateDocumentParams) (*domain.Document, error) {
+	d, _, err := s.CreateDocumentIdempotent(ctx, principal, p)
+	return d, err
+}
+
+// CreateDocumentIdempotent is CreateDocument that also reports whether the document already existed under p.ClientRef.
+func (s *Service) CreateDocumentIdempotent(ctx context.Context, principal permissions.Principal, p CreateDocumentParams) (*domain.Document, bool, error) {
 	if err := s.manageForBranch(ctx, principal, p.BranchID); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if !domain.ValidDocumentType(p.DocumentType) {
-		return nil, domain.ErrInvalidDocumentType
+		return nil, false, domain.ErrInvalidDocumentType
+	}
+	p.ClientRef = strings.TrimSpace(p.ClientRef)
+	if len(p.ClientRef) > 100 {
+		return nil, false, domain.ErrClientRefReused
+	}
+	if p.ClientRef != "" {
+		if existing, err := s.existingByClientRef(ctx, principal, p); existing != nil || err != nil {
+			return existing, existing != nil, err
+		}
 	}
 	id, err := uuid.NewV7()
 	if err != nil {
-		return nil, fmt.Errorf("purchases: generating purchase_document id: %w", err)
+		return nil, false, fmt.Errorf("purchases: generating purchase_document id: %w", err)
 	}
 	now := s.now()
 	docDate := p.DocumentDate
@@ -207,6 +226,7 @@ func (s *Service) CreateDocument(ctx context.Context, principal permissions.Prin
 		SupplierPartyID: p.SupplierPartyID, DocumentType: p.DocumentType, ReferenceDocumentID: p.ReferenceDocumentID,
 		Status: domain.StatusDraft, SupplierInvoiceNumber: p.SupplierInvoiceNumber, SupplierInvoiceDate: p.SupplierInvoiceDate,
 		DocumentDate: docDate, CurrencyCode: p.CurrencyCode, Notes: p.Notes, CreatedBy: principal.UserID, CreatedAt: now, UpdatedAt: now,
+		ClientRef: p.ClientRef,
 	}
 	err = s.pool.RunScoped(ctx, principal.OrganisationID, func(ctx context.Context) error {
 		// Purchases are kept in the company's currency. Foreign-currency purchases (with their
@@ -229,10 +249,41 @@ func (s *Service) CreateDocument(ctx context.Context, principal permissions.Prin
 			AfterState: map[string]any{"document_type": string(p.DocumentType), "document_number": d.DocumentNumber}, At: now,
 		})
 	})
+	if errors.Is(err, domain.ErrDuplicateClientRef) {
+		// Two identical requests raced: the loser's transaction (and its number) rolled back; return the winner's document.
+		existing, getErr := s.existingByClientRef(ctx, principal, p)
+		if existing != nil || getErr != nil {
+			return existing, existing != nil, getErr
+		}
+	}
 	if err != nil {
+		return nil, false, err
+	}
+	return d, false, nil
+}
+
+// existingByClientRef returns the document already created under p.ClientRef, or (nil, nil). A reused client_ref with a different
+// supplier or type is an error: it means the caller mixed up its own ids, and silently returning the old document would hide that.
+func (s *Service) existingByClientRef(ctx context.Context, principal permissions.Principal, p CreateDocumentParams) (*domain.Document, error) {
+	var found *domain.Document
+	err := s.pool.RunScoped(ctx, principal.OrganisationID, func(ctx context.Context) error {
+		d, err := s.documents.GetByClientRef(ctx, principal.OrganisationID, p.ClientRef)
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		found = d
+		return nil
+	})
+	if err != nil || found == nil {
 		return nil, err
 	}
-	return d, nil
+	if found.SupplierPartyID != p.SupplierPartyID || found.DocumentType != p.DocumentType {
+		return nil, domain.ErrClientRefReused
+	}
+	return found, nil
 }
 
 func documentPrefix(t domain.DocumentType) string {

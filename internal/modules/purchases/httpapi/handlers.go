@@ -59,6 +59,8 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		httpx.WriteError(w, r, httpx.NewBadRequest("TAX_DETAILS_INVALID", "The tax details need attention: "+taxdomain.UserMessage(err)+"."))
 	case errors.Is(err, domain.ErrForeignCurrencyUnsupported):
 		httpx.WriteError(w, r, httpx.NewBadRequest("FOREIGN_CURRENCY_UNSUPPORTED", "Purchases can only be recorded in your company currency for now. Enter the supplier bill converted to your company currency."))
+	case errors.Is(err, domain.ErrClientRefReused):
+		httpx.WriteError(w, r, httpx.NewConflict("CLIENT_REF_REUSED", "That client_ref belongs to a different purchase document."))
 	case errors.Is(err, domain.ErrDuplicateNumber):
 		httpx.WriteError(w, r, httpx.NewConflict("DUPLICATE_NUMBER", "That document number is already in use."))
 	case errors.As(err, &forbidden):
@@ -84,6 +86,8 @@ type createDocumentRequest struct {
 	DocumentDate          *time.Time `json:"document_date"`
 	CurrencyCode          string     `json:"currency_code"`
 	Notes                 string     `json:"notes"`
+	// ClientRef makes retries safe: the same value returns the document already created (HTTP 200) instead of creating another.
+	ClientRef string `json:"client_ref"`
 }
 
 func (h *Handlers) createDocument(w http.ResponseWriter, r *http.Request) {
@@ -96,17 +100,21 @@ func (h *Handlers) createDocument(w http.ResponseWriter, r *http.Request) {
 	if req.DocumentDate != nil {
 		docDate = *req.DocumentDate
 	}
-	d, err := h.svc.CreateDocument(r.Context(), principal(r), app.CreateDocumentParams{
+	d, existed, err := h.svc.CreateDocumentIdempotent(r.Context(), principal(r), app.CreateDocumentParams{
 		BranchID: req.BranchID, WarehouseID: req.WarehouseID, SupplierPartyID: req.SupplierPartyID,
 		DocumentType: domain.DocumentType(req.DocumentType), ReferenceDocumentID: req.ReferenceDocumentID,
 		SupplierInvoiceNumber: req.SupplierInvoiceNumber, SupplierInvoiceDate: req.SupplierInvoiceDate,
-		DocumentDate: docDate, CurrencyCode: req.CurrencyCode, Notes: req.Notes,
+		DocumentDate: docDate, CurrencyCode: req.CurrencyCode, Notes: req.Notes, ClientRef: req.ClientRef,
 	})
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, d)
+	status := http.StatusCreated
+	if existed {
+		status = http.StatusOK
+	}
+	httpx.WriteJSON(w, status, d)
 }
 
 func (h *Handlers) getDocument(w http.ResponseWriter, r *http.Request) {

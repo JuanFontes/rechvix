@@ -390,6 +390,8 @@ type recordPaymentRequest struct {
 	Method             string          `json:"method"`
 	ReferenceNumber    string          `json:"reference_number"`
 	PaidAt             *time.Time      `json:"paid_at"`
+	// ClientRef makes retries safe: the same value returns the payment already booked instead of booking it again.
+	ClientRef string `json:"client_ref"`
 }
 
 func (h *Handlers) recordPayment(w http.ResponseWriter, r *http.Request) {
@@ -404,7 +406,7 @@ func (h *Handlers) recordPayment(w http.ResponseWriter, r *http.Request) {
 	}
 	pay, err := h.svc.RecordPayment(r.Context(), principal(r), app.RecordPaymentParams{
 		PartyID: req.PartyID, PurchaseDocumentID: req.PurchaseDocumentID, Amount: req.Amount, BankAccountID: req.BankAccountID,
-		Method: domain.PaymentMethod(req.Method), ReferenceNumber: req.ReferenceNumber, PaidAt: paidAt,
+		Method: domain.PaymentMethod(req.Method), ReferenceNumber: req.ReferenceNumber, PaidAt: paidAt, ClientRef: req.ClientRef,
 	})
 	if err != nil {
 		writeServiceError(w, r, err)

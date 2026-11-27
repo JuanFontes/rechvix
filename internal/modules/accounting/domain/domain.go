@@ -185,6 +185,9 @@ type Payment struct {
 	JournalID          uuid.UUID
 	CreatedBy          uuid.UUID
 	CreatedAt          time.Time
+	// ClientRef is the caller's own id for this payment: a repeated POST with the same value returns the existing payment instead of
+	// booking the money again.
+	ClientRef string
 }
 
 type Reconciliation struct {
@@ -341,6 +344,8 @@ type ReceiptRepository interface {
 
 type PaymentRepository interface {
 	Create(ctx context.Context, p *Payment) error
+	// GetByClientRef returns the payment booked with this client_ref, or ErrNotFound.
+	GetByClientRef(ctx context.Context, orgID uuid.UUID, clientRef string) (*Payment, error)
 	ListByParty(ctx context.Context, orgID, partyID uuid.UUID) ([]*Payment, error)
 	// ListByPurchaseDocument is ListBySalesDocument's mirror for the
 	// supplier side.

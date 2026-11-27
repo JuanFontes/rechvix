@@ -521,15 +521,38 @@ func NewPaymentRepo(pool *database.Pool) *PaymentRepo { return &PaymentRepo{pool
 
 func (r *PaymentRepo) Create(ctx context.Context, p *domain.Payment) error {
 	const q = `
-		INSERT INTO payments (id, organisation_id, party_id, purchase_document_id, amount, currency_code, bank_account_id, payment_method, reference_number, paid_at, journal_id, created_by, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`
+		INSERT INTO payments (id, organisation_id, party_id, purchase_document_id, amount, currency_code, bank_account_id, payment_method, reference_number, paid_at, journal_id, created_by, created_at, client_ref)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`
 	_, err := r.pool.Q(ctx).Exec(ctx, q, p.ID, p.OrganisationID, p.PartyID, p.PurchaseDocumentID, p.Amount.Decimal(),
 		p.Amount.Currency(), p.BankAccountID, string(p.Method), nullIfEmpty(p.ReferenceNumber), p.PaidAt,
-		p.JournalID, p.CreatedBy, p.CreatedAt)
+		p.JournalID, p.CreatedBy, p.CreatedAt, nullIfEmpty(p.ClientRef))
 	if err != nil {
+		if pgUniqueViolation(err) && p.ClientRef != "" {
+			return domain.ErrDuplicateClientRef
+		}
 		return fmt.Errorf("accounting: inserting payment: %w", err)
 	}
 	return nil
+}
+
+func (r *PaymentRepo) GetByClientRef(ctx context.Context, orgID uuid.UUID, clientRef string) (*domain.Payment, error) {
+	const q = `SELECT id, organisation_id, party_id, purchase_document_id, amount, currency_code, bank_account_id, payment_method,
+			COALESCE(reference_number, ''), paid_at, journal_id, created_by, created_at, COALESCE(client_ref, '')
+		FROM payments WHERE organisation_id = $1 AND client_ref = $2`
+	var p domain.Payment
+	var amount decimal.Decimal
+	var currency, method string
+	err := r.pool.Q(ctx).QueryRow(ctx, q, orgID, clientRef).Scan(&p.ID, &p.OrganisationID, &p.PartyID, &p.PurchaseDocumentID, &amount, &currency,
+		&p.BankAccountID, &method, &p.ReferenceNumber, &p.PaidAt, &p.JournalID, &p.CreatedBy, &p.CreatedAt, &p.ClientRef)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, domain.ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("accounting: reading payment by client_ref: %w", err)
+	}
+	p.Amount = money.MustNew(amount, currency)
+	p.Method = domain.PaymentMethod(method)
+	return &p, nil
 }
 
 func (r *PaymentRepo) ListByParty(ctx context.Context, orgID, partyID uuid.UUID) ([]*domain.Payment, error) {
