@@ -13,6 +13,11 @@
 
 # Changelog
 
+## 0.26.1
+
+- **Windows desktop app (MSIX): first start made reliable.** Found by testing on a real Windows laptop. (1) The first start straight after installing could fail with "robocopy exited with code 9" because antivirus still held one of the bundled database files; the copy is now retried (up to six times) and its output is kept in `logs/robocopy.log`. Five clean install-and-open cycles all started first time; where a file was locked the first start takes about 45 s instead of 18 s. (2) An interrupted first start (app closed or PC switched off while the bundled database was being copied or created) could leave the app unable to start for good. The copy and the database creation now finish with a marker, and an unfinished one is completed or rebuilt on the next start; a real database (it has `pg_control`) is never touched. Recovery was tested by removing the database installer and half-deleting the data folder: the app repaired itself in 10.7 s. (3) The bundled Postgres runs with 40 connections and 64 MB of buffers (one user; the server uses 20), and the previous run's `runtime.json` is removed at start. Measured on the laptop: window in 1 to 3 s, about 580 MB in total (mostly the WebView2 window).
+- No server, database or phone change: 0.26.0 stays the server release already running in production.
+
 ## 0.26.0
 
 - **Phone app 2.5.0: suppliers and purchases.** More > Suppliers & purchases: add a supplier, record a supplier bill (items, quantity, cost, the supplier's bill number, an optional amount paid now) and pay a supplier later. A bill puts its goods on the phone's shelf at once and counts as owed until paid. Each bill uploads as a draft carrying a `client_ref`, then its lines, then is finalized; a payment carries its own `client_ref`. A payment made with a bill waits until the bill is on the server. Proven against a real server, including a phone that loses all of its upload progress and asks again: still one bill, one set of lines, one payment. Phone database v9, included in backups. GST on supplier bills is not worked out on the phone (the bill is booked at the cost entered); record GST bills on the web.
